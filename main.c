@@ -21,6 +21,8 @@ char *memdev="/dev/mem";
 #include "mzapo_regs.h"
 #include "font_types.h"
 
+#include "snake.h"
+
 
 unsigned short *fb;
 
@@ -76,30 +78,105 @@ unsigned short *fb;
 #define SPILED_REG_KNOBS_8BIT_o         0x024
 
 
-/*
- * The support function which returns pointer to the virtual
- * address at which starts remapped physical region in the
- * process virtual memory space.
- */
+#define RED_COLOR_RGB888     0xff0000
+#define GREEN_COLOR_RGB888   0x00ff00
+#define BLUE_COLOR_RGB888    0x0000ff
+#define RED_COLOR_RGB565     0xF800
+#define GREEN_COLOR_RGB565   0x0FE0
+#define BLUE_COLOR_RGB565    0x001F
 
-/*
- * The main entry into example program
- */
+#define SCREEN_X 480
+#define SCREEN_Y 320
 
-#define RED_COLOR     0x00ff0000
-#define GREEN_COLOR   0x0000ff00
-#define BLUE_COLOR    0x000000ff
+#define RED_KNOB_MASK   0xff0000
+#define GREEN_KNOB_MASK 0x00ff00
+#define BLUE_KNOB_MASK  0x0000ff
 
-void LED_start_position(unsigned char *mem_base){
-  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR;
-  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR;
+// TODO: make SCALE changable
+#define SCALE 10
+
+#define SCALED_X  SCREEN_X / SCALE
+#define SCALED_Y SCREEN_Y / SCALE
+
+
+void loading_indicator(unsigned char *mem_base){
+  //loading animation using LEDs line
+  uint32_t val_line=5;
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
+  for (int i=0; i<30; i++) {
+     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
+     val_line<<=1;
+    //  printf("LED val 0x%x\n", val_line);
+     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+  }
 }
 
-void draw_pixel(int x, int y, unsigned short color) {
-  if (x>=0 && x<480 && y>=0 && y<320) {
+void LED_start_position(unsigned char *mem_base){
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR_RGB888;
+  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
+}
+
+void update_screen(unsigned char *parlcd_mem_base){
+    // update_screen
+    parlcd_write_cmd(parlcd_mem_base, 0x2c);
+    for (int ptr = 0; ptr < SCREEN_X*SCREEN_Y ; ptr++) {
+        parlcd_write_data(parlcd_mem_base, fb[ptr]);
+    }
+}
+
+void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short color) {
+  if (x >= 0 && x < SCREEN_X && y >= 0 && y < SCREEN_Y) {
     fb[x+480*y] = color;
   }
 }
+
+void draw_board(board_values board[SCREEN_Y][SCREEN_X],  unsigned char *parlcd_mem_base){
+    // make screen blake
+    for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
+        fb[ptr]=0u;
+    }
+    
+
+    for(int i = 0; i < SCREEN_Y; i++){
+      for(int j = 0; j < SCREEN_X; j++){
+        // printf("CHECK\n");
+        if(board[i][j] == EMPTY_PIXEL){
+          draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
+        }
+        else{
+          draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
+        }
+      }
+    }
+    
+    update_screen(parlcd_mem_base);
+}
+
+void draw_board2(board_values board[SCALED_Y][SCALED_X],  unsigned char *parlcd_mem_base){
+    // make screen blake
+    for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
+        fb[ptr]=0u;
+    }
+  
+    for(int i = 0; i < SCREEN_Y; i++){
+      for(int j = 0; j < SCREEN_X; j++){
+        int boardI = i/SCALE;
+        int boardJ = j/SCALE;
+        // printf("i = %d, j = %d\n",i,j);
+        // printf("boardI = %d, boardJ = %d\n",boardI,boardJ);
+        
+        if(board[boardI][boardJ] == SNAKE1){
+          draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
+        }
+        else{
+          draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
+        }
+      }
+    }
+    
+    update_screen(parlcd_mem_base);
+}
+
 
 void draw_char(int x, int y, font_descriptor_t* fdes, char ch) {
 }
@@ -117,16 +194,54 @@ int char_width(font_descriptor_t* fdes, int ch) {
   return width;
 }
 
+// TODO remove it
+void print_board(board_values board[SCREEN_Y][SCREEN_X]){
+  for(int i = 0; i < SCREEN_Y; i++){
+    for(int j = 0; j < SCREEN_X; j++){
+      switch(board[i][j]){
+        case EMPTY_PIXEL:
+          printf("E");
+        case SNAKE1:
+          printf("S");  
+      }
+    printf("\n");
+  }
+  printf("\n");
+  }
+
+}
+
+
+// TODO remove it
+void print_board2(board_values board[SCALED_Y][SCALED_X]){
+  for(int i = 0; i < SCALED_Y; i++){
+    for(int j = 0; j < SCALED_X; j++){
+      switch(board[i][j]){
+        case EMPTY_PIXEL:
+          printf("E");
+          break;
+        case SNAKE1:
+          printf("S");  
+          break;
+      }
+    }
+    printf("\n");
+  }
+  printf("\n");
+
+}
+
 
 int main(int argc, char *argv[])
 {
 
   unsigned char *mem_base;
   unsigned char *parlcd_mem_base;
-  uint32_t val_line=5;
+  // uint32_t val_line=5;
   int i,j,k;
   int ptr;
   unsigned int c;
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
   fb  = (unsigned short *)malloc(320*480*2);
 
   // Maping mem_base
@@ -135,15 +250,8 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-
-  // Loading indicator
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
-  for (i=0; i<30; i++) {
-     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-     val_line<<=1;
-     printf("LED val 0x%x\n", val_line);
-     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
-  }
+  loading_indicator(mem_base);
+  LED_start_position(mem_base);
 
   //Maping parlcd_mem_base
   parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
@@ -155,85 +263,60 @@ int main(int argc, char *argv[])
 
   parlcd_write_cmd(parlcd_mem_base, 0x2c);
   ptr=0;
-  for (i = 0; i < 320 ; i++) {
-    for (j = 0; j < 480 ; j++) {
+  for (i = 0; i < SCREEN_Y ; i++) {
+    for (j = 0; j < SCREEN_X ; j++) {
       c = 0;
       fb[ptr]=c;
       parlcd_write_data(parlcd_mem_base, fb[ptr++]);
     }
   }
 
+  // int scale = 5;
+  board_values board[SCREEN_Y][SCREEN_X] = {EMPTY_PIXEL};
+  board_values board2[SCALED_Y][SCALED_X] = {SNAKE1};
+  // printf("SCALED X %d SCALED_Y %d\n",SCALED_X,SCALED_Y);
+  // int board[321][481] = {0};
 
-  int scale = 5;
 
-  int board[321][481] = {0};
-
-    for(int i = 0; i < 320; i++){
-      for(int j = 0; j < 480; j++){
-        if(i == 50 || i == 51 || i == 52 || i == 53 || j == 54 || i == 55 || i == 56){
-          board[i][j] = 1;
-        }
-        // board[i][j] = (i+j) % 3;
+  for(int i = 0; i < SCREEN_Y; i++){
+    for(int j = 0; j < SCREEN_X; j++){
+      if(i == 50 || i == 51 || i == 52 || i == 53 || j == 54 || i == 55 || i == 56){
+        board[i][j] = SNAKE1;
       }
-    }
-
-  while(1){
-    for (ptr = 0; ptr < 320*480 ; ptr++) {
-        fb[ptr]=0u;
-    }
-    for(int i = 0; i < 320; i++){
-      for(int j = 0; j < 480; j++){
-        if(board[i][j] == 1){
-          fb[j+(i)*480]=0xF800; // Red
-        }
-        else if(board[i][j] == 2){
-          fb[j+(i)*480]=0x001F; // Blue
-        }
-        else{
-          fb[j+(i)*480]=0x0FE0; // Green
-        }
-        
+      else{
+        board[i][j] = EMPTY_PIXEL;
       }
-    }
-
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
-    for (ptr = 0; ptr < 480*320 ; ptr++) {
-        parlcd_write_data(parlcd_mem_base, fb[ptr]);
     }
   }
   
 
-  loop_delay.tv_sec = 0;
-  loop_delay.tv_nsec = 150 * 1000 * 1000;
-  for (k=0; k<60; k++) {
-    
-    for (ptr = 0; ptr < 320*480 ; ptr++) {
-        fb[ptr]=0u;
-    }
-    // pixel (x,y) -> fb[x+y*480]
-    for (i=0; i<200; i++) {
-      for (j=0; j<20; j++) {
-        fb[j+(i+k)*480]=0x1f<<5;
+  for(int i = 0; i < SCALED_Y; i++){
+    for(int j = 0; j < SCALED_X; j++){
+      if(j == 10 || j == 20){
+        board2[i][j] = SNAKE1;
+      }
+      else{
+        board2[i][j] = EMPTY_PIXEL;
       }
     }
-    
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
-    for (ptr = 0; ptr < 480*320 ; ptr++) {
-        parlcd_write_data(parlcd_mem_base, fb[ptr]);
-    }
-
-    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
-    
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
+
+  
+
+
 
 
   int is_first_snake_alive = 1, is_second_snake_alive = 1;
-  // LED_start_position(mem_base);
+  
+  uint32_t rgb_knobs_value;
+  int int_val;
+  unsigned int uint_val;
+
+  unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
+  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
+
   while (1) {
-     uint32_t rgb_knobs_value;
-     int int_val;
-     unsigned int uint_val;
+     
 
      /* Initialize structure to 0 seconds and 200 milliseconds */
      struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
@@ -262,18 +345,41 @@ int main(int argc, char *argv[])
     // is_first_snake_alive = 0;
     // is_second_snake_alive = 0;
      if(is_first_snake_alive == 0){
-       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR;
+       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
      }
      if(is_second_snake_alive == 0){
-       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR;
+       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
      }
 
+
+    // draw_board(board,parlcd_mem_base);
+    draw_board2(board2,parlcd_mem_base);
      /* Assign value read from knobs to the basic signed and unsigned types */
      int_val = rgb_knobs_value;
      uint_val = rgb_knobs_value;
 
-     /* Print values */
-     printf("int %10d uint 0x%08x\n", int_val, uint_val);
+    unsigned int new_RED_knob_value = uint_val & RED_KNOB_MASK;
+    unsigned int new_BLUE_knob_value = uint_val & BLUE_KNOB_MASK;
+
+    // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_red_knob_value,new_RED_knob_value,previous_red_knob_value - new_RED_knob_value);
+    // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_blue_knob_value,new_BLUE_knob_value,previous_blue_knob_value - new_BLUE_knob_value);
+    //  printf("int %10d uint 0x%08x\n", int_val, uint_val);
+
+    if(previous_red_knob_value - new_RED_knob_value >= 0x00030000 && previous_red_knob_value - new_RED_knob_value < 0x000f0000){
+       printf("RED KNOB TO LEFT\n");
+    }
+    if(new_RED_knob_value - previous_red_knob_value >= 0x00030000 && new_RED_knob_value - previous_red_knob_value < 0x000f0000){
+      printf("RED KNOB TO RIGHT\n");
+    }
+    previous_red_knob_value = new_RED_knob_value;
+
+    if(previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
+       printf("BLUE KNOB TO LEFT\n");
+    }
+    if(new_BLUE_knob_value - previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - previous_blue_knob_value < 0x0000000f){
+      printf("BLUE KNOB TO RIGHT\n");
+    }
+    previous_blue_knob_value = new_BLUE_knob_value;
 
      /*
       * Wait for time specified by "loop_delay" variable.
