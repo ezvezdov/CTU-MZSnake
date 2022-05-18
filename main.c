@@ -85,18 +85,26 @@ unsigned short *fb;
 #define GREEN_COLOR_RGB565   0x0FE0
 #define BLUE_COLOR_RGB565    0x001F
 
-#define SCREEN_X 480
-#define SCREEN_Y 320
+// #define SCREEN_X 480
+// #define SCREEN_Y 320
 
 #define RED_KNOB_MASK   0xff0000
 #define GREEN_KNOB_MASK 0x00ff00
 #define BLUE_KNOB_MASK  0x0000ff
 
 // TODO: make SCALE changable
-#define SCALE 10
+// #define SCALE 10
 
-#define SCALED_X  SCREEN_X / SCALE
-#define SCALED_Y SCREEN_Y / SCALE
+int SCREEN_X = 480;
+int SCREEN_Y = 320;
+int SCALE = 10;
+// int SCALED_X = 48;
+// int scaleY = 32;
+
+
+
+// #define SCALED_X  SCREEN_X / SCALE
+// #define SCALED_Y SCREEN_Y / SCALE
 
 
 void loading_indicator(unsigned char *mem_base){
@@ -130,7 +138,7 @@ void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short colo
   }
 }
 
-void draw_board(board_values board[SCREEN_Y][SCREEN_X],  unsigned char *parlcd_mem_base){
+void draw_board(board_values **board,  unsigned char *parlcd_mem_base){
     // make screen blake
     for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
         fb[ptr]=0u;
@@ -152,8 +160,8 @@ void draw_board(board_values board[SCREEN_Y][SCREEN_X],  unsigned char *parlcd_m
     update_screen(parlcd_mem_base);
 }
 
-void draw_board2(board_values board[SCALED_Y][SCALED_X],  unsigned char *parlcd_mem_base){
-    // make screen blake
+void draw_board2(board_values **board,  unsigned char *parlcd_mem_base){
+    // make screen black
     for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
         fb[ptr]=0u;
     }
@@ -165,11 +173,16 @@ void draw_board2(board_values board[SCALED_Y][SCALED_X],  unsigned char *parlcd_
         // printf("i = %d, j = %d\n",i,j);
         // printf("boardI = %d, boardJ = %d\n",boardI,boardJ);
         
-        if(board[boardI][boardJ] == SNAKE1){
-          draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
-        }
-        else{
-          draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
+        switch(board[boardI][boardJ]){
+          case SNAKE1:
+            draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
+            break;
+          case SNAKE2:
+            draw_pixel(parlcd_mem_base,j,i,BLUE_COLOR_RGB565);  
+            break;
+          case EMPTY_PIXEL:
+            draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
+            break;
         }
       }
     }
@@ -195,27 +208,27 @@ int char_width(font_descriptor_t* fdes, int ch) {
 }
 
 // TODO remove it
-void print_board(board_values board[SCREEN_Y][SCREEN_X]){
-  for(int i = 0; i < SCREEN_Y; i++){
-    for(int j = 0; j < SCREEN_X; j++){
-      switch(board[i][j]){
-        case EMPTY_PIXEL:
-          printf("E");
-        case SNAKE1:
-          printf("S");  
-      }
-    printf("\n");
-  }
-  printf("\n");
-  }
+// void print_board(board_values **board){
+//   for(int i = 0; i < SCREEN_Y; i++){
+//     for(int j = 0; j < SCREEN_X; j++){
+//       switch(board[i][j]){
+//         case EMPTY_PIXEL:
+//           printf("E");
+//         case SNAKE1:
+//           printf("S");  
+//       }
+//     printf("\n");
+//   }
+//   printf("\n");
+//   }
 
-}
+// }
 
 
 // TODO remove it
-void print_board2(board_values board[SCALED_Y][SCALED_X]){
-  for(int i = 0; i < SCALED_Y; i++){
-    for(int j = 0; j < SCALED_X; j++){
+void print_board2(board_values **board){
+  for(int i = 0; i < scaleY; i++){
+    for(int j = 0; j < scaleX; j++){
       switch(board[i][j]){
         case EMPTY_PIXEL:
           printf("E");
@@ -230,6 +243,19 @@ void print_board2(board_values board[SCALED_Y][SCALED_X]){
   printf("\n");
 
 }
+
+
+board_values **init_board(int max_y, int max_x){
+  board_values **board = malloc(max_y * sizeof(board_values*));
+  for(int i = 0; i < max_y; i++){
+    board[i] = malloc(max_x * sizeof(board_values));
+    for(int j = 0; j < max_x; j++){
+      board[i][j] = EMPTY_PIXEL;
+    }
+  }
+  return board;
+}
+
 
 
 int main(int argc, char *argv[])
@@ -272,41 +298,67 @@ int main(int argc, char *argv[])
   }
 
   // int scale = 5;
-  board_values board[SCREEN_Y][SCREEN_X] = {EMPTY_PIXEL};
-  board_values board2[SCALED_Y][SCALED_X] = {SNAKE1};
+  board_values **board = init_board(SCREEN_Y,SCREEN_X);
+
+  set_scale(SCREEN_Y/SCALE,SCREEN_X/SCALE);
+
+  board_values **board2 = init_board(SCREEN_Y/SCALE,SCREEN_X/SCALE);
+
+  
+
   // printf("SCALED X %d SCALED_Y %d\n",SCALED_X,SCALED_Y);
   // int board[321][481] = {0};
 
 
-  for(int i = 0; i < SCREEN_Y; i++){
-    for(int j = 0; j < SCREEN_X; j++){
-      if(i == 50 || i == 51 || i == 52 || i == 53 || j == 54 || i == 55 || i == 56){
-        board[i][j] = SNAKE1;
-      }
-      else{
-        board[i][j] = EMPTY_PIXEL;
-      }
-    }
-  }
+  // for(int i = 0; i < SCREEN_Y; i++){
+  //   for(int j = 0; j < SCREEN_X; j++){
+  //     if(i == 50 || i == 51 || i == 52 || i == 53 || j == 54 || i == 55 || i == 56){
+  //       board[i][j] = SNAKE1;
+  //     }
+  //     else{
+  //       board[i][j] = EMPTY_PIXEL;
+  //     }
+  //   }
+  // }
   
 
-  for(int i = 0; i < SCALED_Y; i++){
-    for(int j = 0; j < SCALED_X; j++){
-      if(j == 10 || j == 20){
-        board2[i][j] = SNAKE1;
-      }
-      else{
-        board2[i][j] = EMPTY_PIXEL;
-      }
-    }
-  }
+  // for(int i = 0; i < SCALED_Y; i++){
+  //   for(int j = 0; j < SCALED_X; j++){
+  //     if(j == 10 || j == 20){
+  //       board2[i][j] = SNAKE1;
+  //     }
+  //     else{
+  //       board2[i][j] = EMPTY_PIXEL;
+  //     }
+  //   }
+  // }
+
+    snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
+    snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
+
+  
+
+    // for(snake_body_t *i = snake1->tail; i != snake1->head; i = i->next){
+    //     printf("%d %d\n",i->x,i->y);
+    // }
+//     // printf("\n");
+    // for(snake_body_t *i = snake2->tail; i != snake2->head; i = i->next){
+    //     printf("%d %d\n",i->x,i->y);
+    // }
+
+    generate_snake_on_board(board2, snake1);
+    generate_snake_on_board(board2, snake2);
+    // print_board(board);
+
+    system ("/bin/stty raw"); // set terminal
+    system("stty -g > ~/.stty-save");
+    system("stty -icanon min 0 time 0");
+
+
 
   
 
 
-
-
-  int is_first_snake_alive = 1, is_second_snake_alive = 1;
   
   uint32_t rgb_knobs_value;
   int int_val;
@@ -319,7 +371,8 @@ int main(int argc, char *argv[])
      
 
      /* Initialize structure to 0 seconds and 200 milliseconds */
-     struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
+    //  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
+     struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
 
      /*
       * Access register holding 8 bit relative knobs position
@@ -344,12 +397,14 @@ int main(int argc, char *argv[])
 
     // is_first_snake_alive = 0;
     // is_second_snake_alive = 0;
-     if(is_first_snake_alive == 0){
+     if( snake1->is_alive == 0){
        *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
      }
-     if(is_second_snake_alive == 0){
+     if(snake2->is_alive == 0){
        *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
      }
+
+     
 
 
     // draw_board(board,parlcd_mem_base);
@@ -361,25 +416,108 @@ int main(int argc, char *argv[])
     unsigned int new_RED_knob_value = uint_val & RED_KNOB_MASK;
     unsigned int new_BLUE_knob_value = uint_val & BLUE_KNOB_MASK;
 
+    direction red_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
+
     // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_red_knob_value,new_RED_knob_value,previous_red_knob_value - new_RED_knob_value);
     // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_blue_knob_value,new_BLUE_knob_value,previous_blue_knob_value - new_BLUE_knob_value);
     //  printf("int %10d uint 0x%08x\n", int_val, uint_val);
 
     if(previous_red_knob_value - new_RED_knob_value >= 0x00030000 && previous_red_knob_value - new_RED_knob_value < 0x000f0000){
        printf("RED KNOB TO LEFT\n");
+       red_knob_direction = LEFT;
     }
     if(new_RED_knob_value - previous_red_knob_value >= 0x00030000 && new_RED_knob_value - previous_red_knob_value < 0x000f0000){
       printf("RED KNOB TO RIGHT\n");
+      red_knob_direction = RIGHT;
     }
     previous_red_knob_value = new_RED_knob_value;
 
     if(previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
        printf("BLUE KNOB TO LEFT\n");
+       blue_knob_direction = LEFT;
     }
     if(new_BLUE_knob_value - previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - previous_blue_knob_value < 0x0000000f){
       printf("BLUE KNOB TO RIGHT\n");
+      blue_knob_direction = RIGHT;
     }
     previous_blue_knob_value = new_BLUE_knob_value;
+
+    char t;
+    if(read(STDIN_FILENO, &t, 1) == 1){ // if reading input is ok
+      switch(t){
+        case('w'):
+          if(snake1->snake_direction == DOWN){
+            break;
+          }
+          snake1->snake_direction = UP;
+          red_knob_direction = NULL_DIRECTION;
+          break;
+        case('a'):
+          if(snake1->snake_direction == RIGHT){
+            break;
+          }
+          snake1->snake_direction = LEFT;
+          red_knob_direction = NULL_DIRECTION;
+          break;
+        case('s'):
+          if(snake1->snake_direction == UP){
+            break;
+          }
+          snake1->snake_direction = DOWN;
+          red_knob_direction = NULL_DIRECTION;
+          break;
+        case('d'):
+          if(snake1->snake_direction == LEFT){
+            break;
+          }
+          snake1->snake_direction = RIGHT;
+          red_knob_direction = NULL_DIRECTION;
+          break;
+
+        case('i'):
+          if(snake2->snake_direction == DOWN){
+            break;
+          }
+          snake2->snake_direction = UP;
+          blue_knob_direction = NULL_DIRECTION;
+          break;
+        case('j'):
+          if(snake2->snake_direction == RIGHT){
+            break;
+          }
+          snake2->snake_direction = LEFT;
+          blue_knob_direction = NULL_DIRECTION;
+          break;
+
+        case('k'):
+          if(snake2->snake_direction == UP){
+            break;
+          }
+          snake2->snake_direction = DOWN;
+          blue_knob_direction = NULL_DIRECTION;
+          break;
+        case('l'):
+          if(snake2->snake_direction == LEFT){
+            break;
+          }
+          snake2->snake_direction = RIGHT;
+          blue_knob_direction = NULL_DIRECTION;
+          break;
+
+        case('q'):
+          exit(1);
+      }
+    }   
+
+
+      if(snake1->is_alive == 1){
+        change_direction(snake1, red_knob_direction);
+        move_snake(board2, snake1);
+     }
+     if(snake2->is_alive == 1){
+       change_direction(snake2,blue_knob_direction);
+       move_snake(board2,snake2);
+     }
 
      /*
       * Wait for time specified by "loop_delay" variable.
