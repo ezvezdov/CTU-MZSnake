@@ -86,6 +86,16 @@ unsigned short *fb;
 #define GREEN_COLOR_RGB565   0x0FE0
 #define BLUE_COLOR_RGB565    0x001F
 #define BLACK_COLOR_RGB565   0x0000
+#define WHITE_COLOR_RGB_565  0xFFFF
+
+typedef enum lcd_colors{
+  SNAKE_1_COLOR = RED_COLOR_RGB565,
+  SNAKE_2_COLOR = BLUE_COLOR_RGB565,
+  APPLE_COLOR = BLACK_COLOR_RGB565,
+  EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565
+  TEXT_COLOR = BLACK_COLOR_RGB565,
+  STATUS_BAR_COLOR = 
+} lcd_colors;
 
 
 #define RED_KNOB_MASK   0xff0000
@@ -153,27 +163,9 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
         lcd_board[i][j] = scaled_board[boardI][boardJ];
       }
     }
-    // print_char(10, 10, 'a',0, 3, lcd_board);
-    // print_string(10,10, "score:",1,lcd_board);
-
-    
-    
 }
 
-void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
-  char str1[] = "Score:";
-  char snake1_count[10], snake2_count[10];
-  sprintf(snake1_count, "%d", snake1->count);
-  strcat(str1,snake1_count);
-  print_string(10,10, str1,1,lcd_board);
 
-  char str2[] = "Score:";
-  sprintf(snake2_count, "%d", snake2->count);
-  strcat(str2,snake2_count);
-  print_string(100,10, str2,1,lcd_board);
-
-
-}
 
 
 void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
@@ -181,16 +173,16 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
     for(int j = 0; j < SCREEN_X; j++){
       switch(lcd_board[i][j]){
           case SNAKE1:
-            draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
+            draw_pixel(parlcd_mem_base,j,i,SNAKE_1_COLOR);
             break;
           case SNAKE2:
-            draw_pixel(parlcd_mem_base,j,i,BLUE_COLOR_RGB565);  
+            draw_pixel(parlcd_mem_base,j,i,SNAKE_2_COLOR);  
             break;
           case APPLE:
-            draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
+            draw_pixel(parlcd_mem_base,j,i,APPLE_COLOR);
             break;
           case EMPTY_PIXEL:
-            draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
+            draw_pixel(parlcd_mem_base,j,i,EMPTY_PIXEL_COLOR);
             break;
           case TEXT:
             draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
@@ -289,7 +281,7 @@ void print_char(int x, int y, char ch, unsigned colour, int square, board_values
             if ((buffer & 0x8000) != 0){                
                 for(int m = 0; m < square; m++) // for all pixels in square    
                     for(int n = 0 ; n < square; n++)
-                        lcd_board[y + i*square + m][x + j*square + n] = TEXT;
+                        lcd_board[y + i*square + m][x + j*square + n] = colour;
             }    
             buffer <<= 1;
         }
@@ -310,12 +302,27 @@ int char_width(int ch) {
 }
 
 
-void print_string(int x, int y, char *str, int square, board_values **lcd_board){
+void print_string(int x, int y, char *str, unsigned colour, int square, board_values **lcd_board){
   for(int i = 0; i < strlen(str); i++){
-    print_char(x,y,str[i], 0,1, lcd_board);
+    print_char(x,y,str[i], colour,1, lcd_board);
     // x += font->width[str[i]]*square + 4;
     x+= char_width(str[i]) * square;
   }
+}
+
+void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
+  char str1[] = "Score:";
+  char snake1_count[10], snake2_count[10];
+  sprintf(snake1_count, "%d", snake1->count);
+  strcat(str1,snake1_count);
+  print_string(10,10, str1,SNAKE1,1,lcd_board);
+
+  char str2[] = "Score:";
+  sprintf(snake2_count, "%d", snake2->count);
+  strcat(str2,snake2_count);
+  print_string(100,10, str2,SNAKE2,1,lcd_board);
+
+
 }
 
 
