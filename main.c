@@ -92,9 +92,9 @@ typedef enum lcd_colors{
   SNAKE_1_COLOR = RED_COLOR_RGB565,
   SNAKE_2_COLOR = BLUE_COLOR_RGB565,
   APPLE_COLOR = BLACK_COLOR_RGB565,
-  EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565
+  EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565,
   TEXT_COLOR = BLACK_COLOR_RGB565,
-  STATUS_BAR_COLOR = 
+  STATUS_BAR_COLOR = WHITE_COLOR_RGB_565
 } lcd_colors;
 
 
@@ -163,6 +163,13 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
         lcd_board[i][j] = scaled_board[boardI][boardJ];
       }
     }
+
+    for(int i = 0; i < 30; i++){
+      for(int j = 0; j < SCREEN_X; j++){
+        lcd_board[i][j] = 0xFFFF;
+      }
+    }
+
 }
 
 
