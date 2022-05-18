@@ -7,7 +7,8 @@ typedef enum board_values{
     SNAKE1 = 1,
     SNAKE2 = 2,
     APPLE,
-    TEXT
+    TEXT,
+    STATUS_BAR
 } board_values;
 
 typedef enum direction{
@@ -287,6 +288,10 @@ void move_snake(board_values **board, snake_t *s){
     if(board[new_head_y][new_head_x] != APPLE){
         board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
         remove_tail(s);
+    }
+
+    if(board[new_head_y][new_head_x] == APPLE){
+        s->count++;
     }
     
 
