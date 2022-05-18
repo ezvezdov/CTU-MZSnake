@@ -154,11 +154,26 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
       }
     }
     // print_char(10, 10, 'a',0, 3, lcd_board);
-    print_string(10,10, "score:",1,lcd_board);
+    // print_string(10,10, "score:",1,lcd_board);
+
     
     
 }
 
+void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
+  char str1[] = "Score:";
+  char snake1_count[10], snake2_count[10];
+  sprintf(snake1_count, "%d", snake1->count);
+  strcat(str1,snake1_count);
+  print_string(10,10, str1,1,lcd_board);
+
+  char str2[] = "Score:";
+  sprintf(snake2_count, "%d", snake2->count);
+  strcat(str2,snake2_count);
+  print_string(100,10, str2,1,lcd_board);
+
+
+}
 
 
 void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
@@ -185,23 +200,6 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
   update_screen(parlcd_mem_base);
 }
 
-
-
-void draw_char(int x, int y, font_descriptor_t* fdes, char ch) {
-}
-
-int char_width(font_descriptor_t* fdes, int ch) {
-  int width = 0;
-  if ((ch >= fdes->firstchar) && (ch-fdes->firstchar < fdes->size)) {
-    ch -= fdes->firstchar;
-    if (!fdes->width) {
-      width = fdes->maxwidth;
-    } else {
-      width = fdes->width[ch];
-    }
-  }
-  return width;
-}
 
 // TODO remove it
 // void print_board(board_values **board){
@@ -298,10 +296,25 @@ void print_char(int x, int y, char ch, unsigned colour, int square, board_values
     }
 }
 
+int char_width(int ch) {
+  int width = 0;
+  if ((ch >= font->firstchar) && (ch-font->firstchar < font->size)) {
+    ch -= font->firstchar;
+    if (!font->width) {
+      width = font->maxwidth;
+    } else {
+      width = font->width[ch];
+    }
+  }
+  return width;
+}
+
+
 void print_string(int x, int y, char *str, int square, board_values **lcd_board){
   for(int i = 0; i < strlen(str); i++){
     print_char(x,y,str[i], 0,1, lcd_board);
-    x += font->width[str[i]]*square + 4;
+    // x += font->width[str[i]]*square + 4;
+    x+= char_width(str[i]) * square;
   }
 }
 
@@ -369,6 +382,9 @@ int main(int argc, char *argv[])
   generate_apple_on_board(board2, apple);
 
   
+
+
+  
   uint32_t rgb_knobs_value;
 
   unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
@@ -410,8 +426,11 @@ int main(int argc, char *argv[])
       generate_apple_on_board(board2, apple);
      }
 
+
+    
     // update screen with actual board
     update_board_view(board2,board);
+    update_scores(snake1, snake2, board);
     print_screen(parlcd_mem_base,board);
 
       //small sleep 
