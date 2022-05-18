@@ -24,6 +24,7 @@ char *memdev="/dev/mem";
 #include "snake.h"
 
 
+
 unsigned short *fb;
 
 /*
@@ -84,27 +85,16 @@ unsigned short *fb;
 #define RED_COLOR_RGB565     0xF800
 #define GREEN_COLOR_RGB565   0x0FE0
 #define BLUE_COLOR_RGB565    0x001F
+#define BLACK_COLOR_RGB565   0x0000
 
-// #define SCREEN_X 480
-// #define SCREEN_Y 320
 
 #define RED_KNOB_MASK   0xff0000
 #define GREEN_KNOB_MASK 0x00ff00
 #define BLUE_KNOB_MASK  0x0000ff
 
-// TODO: make SCALE changable
-// #define SCALE 10
-
 int SCREEN_X = 480;
 int SCREEN_Y = 320;
 int SCALE = 10;
-// int SCALED_X = 48;
-// int scaleY = 32;
-
-
-
-// #define SCALED_X  SCREEN_X / SCALE
-// #define SCALED_Y SCREEN_Y / SCALE
 
 
 void loading_indicator(unsigned char *mem_base){
@@ -124,6 +114,21 @@ void LED_start_position(unsigned char *mem_base){
   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
 }
 
+void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
+  if(snake1->is_alive == 1){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR_RGB888;
+  }
+  else{
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
+  }
+  
+  if(snake2->is_alive == 1){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
+  }
+  else{
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
+  }
+}
 void update_screen(unsigned char *parlcd_mem_base){
     // update_screen
     parlcd_write_cmd(parlcd_mem_base, 0x2c);
@@ -138,57 +143,48 @@ void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short colo
   }
 }
 
-void draw_board(board_values **board,  unsigned char *parlcd_mem_base){
-    // make screen blake
-    for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
-        fb[ptr]=0u;
-    }
-    
+void update_board_view(board_values **scaled_board, board_values **lcd_board){
 
-    for(int i = 0; i < SCREEN_Y; i++){
-      for(int j = 0; j < SCREEN_X; j++){
-        // printf("CHECK\n");
-        if(board[i][j] == EMPTY_PIXEL){
-          draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
-        }
-        else{
-          draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
-        }
-      }
-    }
-    
-    update_screen(parlcd_mem_base);
-}
-
-void draw_board2(board_values **board,  unsigned char *parlcd_mem_base){
-    // make screen black
-    for (int ptr = 0; ptr < SCREEN_Y*SCREEN_X ; ptr++) {
-        fb[ptr]=0u;
-    }
-  
     for(int i = 0; i < SCREEN_Y; i++){
       for(int j = 0; j < SCREEN_X; j++){
         int boardI = i/SCALE;
         int boardJ = j/SCALE;
-        // printf("i = %d, j = %d\n",i,j);
-        // printf("boardI = %d, boardJ = %d\n",boardI,boardJ);
-        
-        switch(board[boardI][boardJ]){
+
+        lcd_board[i][j] = scaled_board[boardI][boardJ];
+      }
+    }
+    // print_char(10, 10, 'a',0, 3, lcd_board);
+    print_string(10,10, "score:",1,lcd_board);
+    
+    
+}
+
+
+
+void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
+  for(int i = 0; i < SCREEN_Y; i++){
+    for(int j = 0; j < SCREEN_X; j++){
+      switch(lcd_board[i][j]){
           case SNAKE1:
             draw_pixel(parlcd_mem_base,j,i,RED_COLOR_RGB565);
             break;
           case SNAKE2:
             draw_pixel(parlcd_mem_base,j,i,BLUE_COLOR_RGB565);  
             break;
+          case APPLE:
+            draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
+            break;
           case EMPTY_PIXEL:
             draw_pixel(parlcd_mem_base,j,i,GREEN_COLOR_RGB565);
             break;
-        }
+          case TEXT:
+            draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
       }
     }
-    
-    update_screen(parlcd_mem_base);
+  }
+  update_screen(parlcd_mem_base);
 }
+
 
 
 void draw_char(int x, int y, font_descriptor_t* fdes, char ch) {
@@ -256,6 +252,59 @@ board_values **init_board(int max_y, int max_x){
   return board;
 }
 
+void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_red_knob_value,unsigned int *previous_blue_knob_value,
+                          direction *red_knob_direction, direction *blue_knob_direction){
+        
+    unsigned int new_RED_knob_value = (unsigned int) rgb_knobs_value & RED_KNOB_MASK;
+    unsigned int new_BLUE_knob_value = (unsigned int) rgb_knobs_value & BLUE_KNOB_MASK;
+
+    *red_knob_direction = NULL_DIRECTION;
+    *blue_knob_direction = NULL_DIRECTION;
+
+    if(*previous_red_knob_value - new_RED_knob_value >= 0x00030000 && *previous_red_knob_value - new_RED_knob_value < 0x000f0000){
+       *red_knob_direction = LEFT;
+    }
+    else if(new_RED_knob_value - *previous_red_knob_value >= 0x00030000 && new_RED_knob_value - *previous_red_knob_value < 0x000f0000){
+      *red_knob_direction = RIGHT;
+    }
+    
+    if(*previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && *previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
+       *blue_knob_direction = LEFT;
+    }
+    else if(new_BLUE_knob_value - *previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - *previous_blue_knob_value < 0x0000000f){
+      *blue_knob_direction = RIGHT;
+    }
+    *previous_red_knob_value = new_RED_knob_value;
+    *previous_blue_knob_value = new_BLUE_knob_value;
+
+
+}
+
+font_descriptor_t *font = &font_winFreeSystem14x16;
+
+void print_char(int x, int y, char ch, unsigned colour, int square, board_values **lcd_board) {
+    uint16_t *ptr = font->bits + (ch - font->firstchar) *font->height;
+    ch -= font->firstchar;
+    for(int i = 0; i < font->height; i++){
+        uint16_t buffer = *(ptr++);   
+        for(int j = 0; j < font->maxwidth; j++){
+            if ((buffer & 0x8000) != 0){                
+                for(int m = 0; m < square; m++) // for all pixels in square    
+                    for(int n = 0 ; n < square; n++)
+                        lcd_board[y + i*square + m][x + j*square + n] = TEXT;
+            }    
+            buffer <<= 1;
+        }
+    }
+}
+
+void print_string(int x, int y, char *str, int square, board_values **lcd_board){
+  for(int i = 0; i < strlen(str); i++){
+    print_char(x,y,str[i], 0,1, lcd_board);
+    x += font->width[str[i]]*square + 4;
+  }
+}
+
 
 
 int main(int argc, char *argv[])
@@ -263,12 +312,19 @@ int main(int argc, char *argv[])
 
   unsigned char *mem_base;
   unsigned char *parlcd_mem_base;
-  // uint32_t val_line=5;
-  int i,j,k;
-  int ptr;
-  unsigned int c;
   struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
   fb  = (unsigned short *)malloc(320*480*2);
+
+  if (serialize_lock(1) <= 0) {
+    printf("System is occupied\n");
+
+    if (1) {
+      printf("Waitting\n");
+      /* Wait till application holding lock releases it or exits */
+      serialize_lock(0);
+    }
+  }
+
 
   // Maping mem_base
   mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
@@ -277,7 +333,6 @@ int main(int argc, char *argv[])
   }
 
   loading_indicator(mem_base);
-  LED_start_position(mem_base);
 
   //Maping parlcd_mem_base
   parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
@@ -287,230 +342,61 @@ int main(int argc, char *argv[])
 
   parlcd_hx8357_init(parlcd_mem_base);
 
-  parlcd_write_cmd(parlcd_mem_base, 0x2c);
-  ptr=0;
-  for (i = 0; i < SCREEN_Y ; i++) {
-    for (j = 0; j < SCREEN_X ; j++) {
-      c = 0;
-      fb[ptr]=c;
-      parlcd_write_data(parlcd_mem_base, fb[ptr++]);
-    }
-  }
+  // set terminal
+  system ("/bin/stty raw");
+  system("stty -g > ~/.stty-save");
+  system("stty -icanon min 0 time 0");
 
-  // int scale = 5;
+
+
+
   board_values **board = init_board(SCREEN_Y,SCREEN_X);
 
   set_scale(SCREEN_Y/SCALE,SCREEN_X/SCALE);
 
   board_values **board2 = init_board(SCREEN_Y/SCALE,SCREEN_X/SCALE);
 
-  
 
-  // printf("SCALED X %d SCALED_Y %d\n",SCALED_X,SCALED_Y);
-  // int board[321][481] = {0};
+  snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
+  snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
 
+  generate_snake_on_board(board2, snake1);
+  generate_snake_on_board(board2, snake2);
 
-  // for(int i = 0; i < SCREEN_Y; i++){
-  //   for(int j = 0; j < SCREEN_X; j++){
-  //     if(i == 50 || i == 51 || i == 52 || i == 53 || j == 54 || i == 55 || i == 56){
-  //       board[i][j] = SNAKE1;
-  //     }
-  //     else{
-  //       board[i][j] = EMPTY_PIXEL;
-  //     }
-  //   }
-  // }
-  
+  apple_t *apple = init_apple();
 
-  // for(int i = 0; i < SCALED_Y; i++){
-  //   for(int j = 0; j < SCALED_X; j++){
-  //     if(j == 10 || j == 20){
-  //       board2[i][j] = SNAKE1;
-  //     }
-  //     else{
-  //       board2[i][j] = EMPTY_PIXEL;
-  //     }
-  //   }
-  // }
-
-    snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
-    snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
-
-  
-
-    // for(snake_body_t *i = snake1->tail; i != snake1->head; i = i->next){
-    //     printf("%d %d\n",i->x,i->y);
-    // }
-//     // printf("\n");
-    // for(snake_body_t *i = snake2->tail; i != snake2->head; i = i->next){
-    //     printf("%d %d\n",i->x,i->y);
-    // }
-
-    generate_snake_on_board(board2, snake1);
-    generate_snake_on_board(board2, snake2);
-    // print_board(board);
-
-    system ("/bin/stty raw"); // set terminal
-    system("stty -g > ~/.stty-save");
-    system("stty -icanon min 0 time 0");
-
-
-
-  
-
+  reset_apple(board2, apple);
+  generate_apple_on_board(board2, apple);
 
   
   uint32_t rgb_knobs_value;
-  int int_val;
-  unsigned int uint_val;
 
   unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
   unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
+  direction red_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
+
 
   while (1) {
      
 
-     /* Initialize structure to 0 seconds and 200 milliseconds */
-    //  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
-     struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
+    // Initialize structure to 0 seconds and 20 milliseconds
+    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
 
-     /*
-      * Access register holding 8 bit relative knobs position
-      * The type "(volatile uint32_t*)" casts address obtained
-      * as a sum of base address and register offset to the
-      * pointer type which target in memory type is 32-bit unsigned
-      * integer. The "volatile" keyword ensures that compiler
-      * cannot reuse previously read value of the location.
-      */
-     rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
-     /* Store the read value to the register controlling individual LEDs */
-    //  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = rgb_knobs_value;
-
-     /*
-      * Store RGB knobs values to the corersponding components controlling
-      * a color/brightness of the RGB LEDs
-      */
-    //  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = rgb_knobs_value;
-
-    //  *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = rgb_knobs_value;
-
-    // is_first_snake_alive = 0;
-    // is_second_snake_alive = 0;
-     if( snake1->is_alive == 0){
-       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
-     }
-     if(snake2->is_alive == 0){
-       *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
-     }
-
-     
+    // set snakes status indicator
+    set_snakes_LED(mem_base, snake1,snake2);
 
 
-    // draw_board(board,parlcd_mem_base);
-    draw_board2(board2,parlcd_mem_base);
-     /* Assign value read from knobs to the basic signed and unsigned types */
-     int_val = rgb_knobs_value;
-     uint_val = rgb_knobs_value;
+    // Access register holding 8 bit relative knobs position
+    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
 
-    unsigned int new_RED_knob_value = uint_val & RED_KNOB_MASK;
-    unsigned int new_BLUE_knob_value = uint_val & BLUE_KNOB_MASK;
+    // set knobs directions
+    set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_blue_knob_value, &red_knob_direction, &blue_knob_direction);
 
-    direction red_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
-
-    // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_red_knob_value,new_RED_knob_value,previous_red_knob_value - new_RED_knob_value);
-    // printf("OLD 0x%08x NEW 0x%08x = 0x%08x\n",previous_blue_knob_value,new_BLUE_knob_value,previous_blue_knob_value - new_BLUE_knob_value);
-    //  printf("int %10d uint 0x%08x\n", int_val, uint_val);
-
-    if(previous_red_knob_value - new_RED_knob_value >= 0x00030000 && previous_red_knob_value - new_RED_knob_value < 0x000f0000){
-       printf("RED KNOB TO LEFT\n");
-       red_knob_direction = LEFT;
-    }
-    if(new_RED_knob_value - previous_red_knob_value >= 0x00030000 && new_RED_knob_value - previous_red_knob_value < 0x000f0000){
-      printf("RED KNOB TO RIGHT\n");
-      red_knob_direction = RIGHT;
-    }
-    previous_red_knob_value = new_RED_knob_value;
-
-    if(previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
-       printf("BLUE KNOB TO LEFT\n");
-       blue_knob_direction = LEFT;
-    }
-    if(new_BLUE_knob_value - previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - previous_blue_knob_value < 0x0000000f){
-      printf("BLUE KNOB TO RIGHT\n");
-      blue_knob_direction = RIGHT;
-    }
-    previous_blue_knob_value = new_BLUE_knob_value;
-
-    char t;
-    if(read(STDIN_FILENO, &t, 1) == 1){ // if reading input is ok
-      switch(t){
-        case('w'):
-          if(snake1->snake_direction == DOWN){
-            break;
-          }
-          snake1->snake_direction = UP;
-          red_knob_direction = NULL_DIRECTION;
-          break;
-        case('a'):
-          if(snake1->snake_direction == RIGHT){
-            break;
-          }
-          snake1->snake_direction = LEFT;
-          red_knob_direction = NULL_DIRECTION;
-          break;
-        case('s'):
-          if(snake1->snake_direction == UP){
-            break;
-          }
-          snake1->snake_direction = DOWN;
-          red_knob_direction = NULL_DIRECTION;
-          break;
-        case('d'):
-          if(snake1->snake_direction == LEFT){
-            break;
-          }
-          snake1->snake_direction = RIGHT;
-          red_knob_direction = NULL_DIRECTION;
-          break;
-
-        case('i'):
-          if(snake2->snake_direction == DOWN){
-            break;
-          }
-          snake2->snake_direction = UP;
-          blue_knob_direction = NULL_DIRECTION;
-          break;
-        case('j'):
-          if(snake2->snake_direction == RIGHT){
-            break;
-          }
-          snake2->snake_direction = LEFT;
-          blue_knob_direction = NULL_DIRECTION;
-          break;
-
-        case('k'):
-          if(snake2->snake_direction == UP){
-            break;
-          }
-          snake2->snake_direction = DOWN;
-          blue_knob_direction = NULL_DIRECTION;
-          break;
-        case('l'):
-          if(snake2->snake_direction == LEFT){
-            break;
-          }
-          snake2->snake_direction = RIGHT;
-          blue_knob_direction = NULL_DIRECTION;
-          break;
-
-        case('q'):
-          exit(1);
-      }
-    }   
+    //check input from keyboard and set snake direction
+    read_from_keyboard(snake1, snake2);
 
 
-      if(snake1->is_alive == 1){
+    if(snake1->is_alive == 1){
         change_direction(snake1, red_knob_direction);
         move_snake(board2, snake1);
      }
@@ -519,14 +405,19 @@ int main(int argc, char *argv[])
        move_snake(board2,snake2);
      }
 
-     /*
-      * Wait for time specified by "loop_delay" variable.
-      * Use monotonic clocks as time reference to ensure
-      * that wait interval is not prolonged or shortened
-      * due to real time adjustment.
-      */
-     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+     if(board2[apple->y][apple->x] != APPLE){
+      reset_apple(board2, apple);
+      generate_apple_on_board(board2, apple);
+     }
+
+    // update screen with actual board
+    update_board_view(board2,board);
+    print_screen(parlcd_mem_base,board);
+
+      //small sleep 
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
 
+  serialize_unlock();
   return 0;
 }
