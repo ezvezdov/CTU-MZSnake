@@ -19,7 +19,7 @@ char *memdev="/dev/mem";
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
-#include "font_types.h"
+
 
 #include "snake.h"
 
@@ -292,65 +292,19 @@ void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_re
 
 }
 
-font_descriptor_t *font = &font_winFreeSystem14x16;
-
-void print_char(int x, int y, char ch, unsigned colour, int square, board_values **lcd_board) {
-    uint16_t *ptr = font->bits + (ch - font->firstchar) *font->height;
-    ch -= font->firstchar;
-    for(int i = 0; i < font->height; i++){
-        uint16_t buffer = *(ptr++);   
-        for(int j = 0; j < font->maxwidth; j++){
-            if ((buffer & 0x8000) != 0){                
-                for(int m = 0; m < square; m++) // for all pixels in square    
-                    for(int n = 0 ; n < square; n++)
-                        lcd_board[y + i*square + m][x + j*square + n] = colour;
-            }    
-            buffer <<= 1;
-        }
-    }
-}
-
-int char_width(int ch) {
-  int width = 0;
-  if ((ch >= font->firstchar) && (ch-font->firstchar < font->size)) {
-    ch -= font->firstchar;
-    if (!font->width) {
-      width = font->maxwidth;
-    } else {
-      width = font->width[ch];
-    }
-  }
-  return width;
-}
-
-int string_width(char *str){
-  int width = 0;
-  for(int i = 0; i < strlen(str); i++){
-    width += char_width(str[i]);
-  }
-  return width;
-}
-
-
-void print_string(int x, int y, char *str, unsigned colour, int square, board_values **lcd_board){
-  for(int i = 0; i < strlen(str); i++){
-    print_char(x,y,str[i], colour,1, lcd_board);
-    // x += font->width[str[i]]*square + 4;
-    x+= char_width(str[i]) * square;
-  }
-}
+#include "font_print.h"
 
 void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
   char str1[] = "Score:";
   char snake1_count[10], snake2_count[10];
   sprintf(snake1_count, "%d", snake1->count);
   strcat(str1,snake1_count);
-  print_string(10,10, str1,SNAKE1,1,lcd_board);
+  print_string(10,10, str1,SNAKE1,1,(int**)lcd_board);
 
   char str2[] = "Score:";
   sprintf(snake2_count, "%d", snake2->count);
   strcat(str2,snake2_count);
-  print_string(100,10, str2,SNAKE2,1,lcd_board);
+  print_string(100,10, str2,SNAKE2,1,(int**)lcd_board);
 
 
 }
@@ -364,7 +318,7 @@ void update_timer(board_values **lcd_board, int msec){
   sprintf(timer_secs, "%02d", (msec)%60);
   strcat(timer_mins,timer_secs);
 
-  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1,lcd_board);
+  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1,(void**)lcd_board);
 }
 
 
@@ -394,7 +348,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  // loading_indicator(mem_base);
+  loading_indicator(mem_base);
 
   //Maping parlcd_mem_base
   parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
@@ -465,21 +419,19 @@ int main(int argc, char *argv[])
     //check input from keyboard and set snake direction
     read_from_keyboard(snake1, snake2);
 
+    snake1->has_eaten = 0;
+    snake2->has_eaten = 0;
+
     if(snake1->is_alive == 1){
         change_direction(snake1, red_knob_direction);
-        // print_snake(snake1,scaled_board);
         move_snake(scaled_board, snake1);
-            //DEBUG output
-        // print_snake(snake1,scaled_board);
-        // print_board(scaled_board);
-
         snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
         
      }
      if(snake2->is_alive == 1){
        change_direction(snake2,blue_knob_direction);
        move_snake(scaled_board,snake2);
-      //  snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
+       snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
        
      }
 
