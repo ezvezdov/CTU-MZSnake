@@ -44,6 +44,7 @@ typedef struct snake_body_t
 typedef struct snake_t
 {
     int is_alive;
+    int has_eaten;
     board_values snake_value; 
     direction snake_direction;
     snake_body_t *head;
@@ -74,6 +75,7 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
     new_snake->head = head;
     new_snake->tail = tail;
     new_snake->is_alive = 1;
+    new_snake->has_eaten = 0;
     new_snake->snake_value = snake_board_value;
     new_snake->snake_direction = UP;
 
@@ -240,11 +242,13 @@ void read_from_keyboard(snake_t *snake1, snake_t *snake2){
 }
 
 void remove_tail(snake_t *s){
-    s->tail->next->prev = s->tail;
+    // s->tail->next->prev = s->tail;
     s->tail = s->tail->next;
     free(s->tail->prev);
     s->tail->prev = NULL;
 }
+
+
 
 void add_new_head(snake_t *s, int new_head_y, int new_head_x){
     snake_body_t *new_head = malloc(sizeof(snake_body_t));
@@ -277,18 +281,40 @@ void move_snake(board_values **board, snake_t *s){
     }
 
     // kill snake if out the board
-    if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX || board[new_head_y][new_head_x] != EMPTY_PIXEL &&
-        board[new_head_y][new_head_x] != APPLE){
+    if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX){// || board[new_head_y][new_head_x] != EMPTY_PIXEL &&
+        // board[new_head_y][new_head_x] != APPLE){
         s->is_alive = 0;
         remove_snake_from_board(board,s);
         return;
     }
+
+    // print_snake(s,board);
     
     // remove tail pixel if snake apple hasn't eaten.
     if(board[new_head_y][new_head_x] != APPLE){
         board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
         remove_tail(s);
+        board[s->tail->y][s->tail->x] = s->snake_value;
     }
+
+    // print_snake(s,board);
+
+    if(board[new_head_y][new_head_x] == s->snake_value){
+        // printf("NEW_HEAD\n");
+        // printf("%d %d\n\n",new_head_y,new_head_x);
+        while(s->tail->y != new_head_y || s->tail->x != new_head_x){
+            // printf("%d %d\n", s->tail->y, s->tail->x);
+            board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+            remove_tail(s);
+            s->count--;
+        }
+        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+        remove_tail(s);
+        s->count--;
+        // printf("END\n");
+        s->has_eaten = 1;
+    }
+
 
     if(board[new_head_y][new_head_x] == APPLE){
         s->count++;
@@ -301,6 +327,44 @@ void move_snake(board_values **board, snake_t *s){
 
 }
 
+int update_snake_from_board(board_values **board, snake_t *s){
+    int is_snake_ok = 1;
+
+    
+    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
+        if(board[i->y][i->x] != s->snake_value){
+            if(i == s->tail){
+                printf("TAIL\n");
+                printf("%d\n",board[i->y][i->x]);
+            }
+            is_snake_ok = 0;
+            break;
+        }
+    }
+
+    
+    if(is_snake_ok == 1){return 0;}
+
+    // printf("NOT OK");
+    if(board[s->head->y][s->head->x] != s->snake_value){
+        s->is_alive = 0;
+        remove_snake_from_board(board,s);
+        return 1;
+    }
+
+    while(board[s->tail->y][s->tail->x] == s->snake_value){
+        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+        remove_tail(s);
+        printf("FIRST MINUS\n");
+        s->count--;
+    }
+    remove_tail(s);
+    printf("SECOND MINUS\n");
+    s->count--;
+    return 1;
+}
+
+
 void generate_snake_on_board(board_values **board, snake_t *s){
 
     if(! (s->head->x == s->tail->x || s->head->y == s->tail->y) || s->head->x >= scaleX || s->head->y >= scaleY  || s->head->x < 0 || s->head->y < 0){
@@ -308,7 +372,7 @@ void generate_snake_on_board(board_values **board, snake_t *s){
         exit(1);
     }
 
-    for(snake_body_t *i = s->tail; i != s->head; i = i->next){
+    for(snake_body_t *i = s->tail; i != NULL; i = i->next){
         board[i->y][i->x] = s->snake_value;
     }
 }
@@ -344,6 +408,14 @@ void print_board(board_values **board){
             
         }
         printf("\n");
+    }
+    printf("\n");
+}
+
+//DEBUG
+void print_snake(snake_t *s, board_values **board){
+    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
+        printf("%d ", board[i->y][i->x]);
     }
     printf("\n");
 }
