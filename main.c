@@ -86,7 +86,7 @@ unsigned short *fb;
 #define GREEN_COLOR_RGB565   0x0FE0
 #define BLUE_COLOR_RGB565    0x001F
 #define BLACK_COLOR_RGB565   0x0000
-#define WHITE_COLOR_RGB_565  0xFFFF
+#define WHITE_COLOR_RGB565  0xFFFF
 
 typedef enum lcd_colors{
   SNAKE_1_COLOR = RED_COLOR_RGB565,
@@ -94,9 +94,15 @@ typedef enum lcd_colors{
   APPLE_COLOR = BLACK_COLOR_RGB565,
   EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565,
   TEXT_COLOR = BLACK_COLOR_RGB565,
-  STATUS_BAR_COLOR = WHITE_COLOR_RGB_565
+  STATUS_BAR_COLOR = WHITE_COLOR_RGB565
 } lcd_colors;
 
+
+union pixel{
+  unsigned short r;
+  unsigned short g;
+  unsigned short b;
+};
 
 #define RED_KNOB_MASK   0xff0000
 #define GREEN_KNOB_MASK 0x00ff00
@@ -128,14 +134,20 @@ void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
   if(snake1->is_alive == 1){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR_RGB888;
   }
-  else{
+  if(snake1->has_eaten == 1){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = BLUE_COLOR_RGB888;
+  }
+  if(snake1->is_alive == 0){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
   }
   
   if(snake2->is_alive == 1){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
   }
-  else{
+  if(snake2->has_eaten == 1){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = BLUE_COLOR_RGB888;
+  }
+  if(snake2->is_alive == 0){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
   }
 }
@@ -154,6 +166,11 @@ void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short colo
 }
 
 void update_board_view(board_values **scaled_board, board_values **lcd_board){
+    for(int i = 0; i < 3; i++){
+      for(int j = 0; j < scaleX; j++){
+        scaled_board[i][j] = STATUS_BAR;
+      }
+    }
 
     for(int i = 0; i < SCREEN_Y; i++){
       for(int j = 0; j < SCREEN_X; j++){
@@ -163,13 +180,6 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
         lcd_board[i][j] = scaled_board[boardI][boardJ];
       }
     }
-
-    for(int i = 0; i < 30; i++){
-      for(int j = 0; j < SCREEN_X; j++){
-        lcd_board[i][j] = 0xFFFF;
-      }
-    }
-
 }
 
 
@@ -193,9 +203,14 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
             break;
           case TEXT:
             draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
+            break;
+          case STATUS_BAR:
+            draw_pixel(parlcd_mem_base,j,i,WHITE_COLOR_RGB565);
+            break;
       }
     }
   }
+
   update_screen(parlcd_mem_base);
 }
 
@@ -219,7 +234,7 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
 
 
 // TODO remove it
-void print_board2(board_values **board){
+void print_scaled_board(board_values **board){
   for(int i = 0; i < scaleY; i++){
     for(int j = 0; j < scaleX; j++){
       switch(board[i][j]){
@@ -308,6 +323,14 @@ int char_width(int ch) {
   return width;
 }
 
+int string_width(char *str){
+  int width = 0;
+  for(int i = 0; i < strlen(str); i++){
+    width += char_width(str[i]);
+  }
+  return width;
+}
+
 
 void print_string(int x, int y, char *str, unsigned colour, int square, board_values **lcd_board){
   for(int i = 0; i < strlen(str); i++){
@@ -330,6 +353,18 @@ void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
   print_string(100,10, str2,SNAKE2,1,lcd_board);
 
 
+}
+
+void update_timer(board_values **lcd_board, int msec){
+  struct tm *time = msec;
+
+  char timer_mins[10], timer_secs[10];
+
+  sprintf(timer_mins, "%02d:", (msec)/60);
+  sprintf(timer_secs, "%02d", (msec)%60);
+  strcat(timer_mins,timer_secs);
+
+  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1,lcd_board);
 }
 
 
@@ -359,7 +394,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  loading_indicator(mem_base);
+  // loading_indicator(mem_base);
 
   //Maping parlcd_mem_base
   parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
@@ -377,23 +412,23 @@ int main(int argc, char *argv[])
 
 
 
-  board_values **board = init_board(SCREEN_Y,SCREEN_X);
+  board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
 
   set_scale(SCREEN_Y/SCALE,SCREEN_X/SCALE);
 
-  board_values **board2 = init_board(SCREEN_Y/SCALE,SCREEN_X/SCALE);
+  board_values **scaled_board = init_board(scaleY,scaleX);
 
 
   snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
   snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
 
-  generate_snake_on_board(board2, snake1);
-  generate_snake_on_board(board2, snake2);
+  generate_snake_on_board(scaled_board, snake1);
+  generate_snake_on_board(scaled_board, snake2);
 
   apple_t *apple = init_apple();
 
-  reset_apple(board2, apple);
-  generate_apple_on_board(board2, apple);
+  reset_apple(scaled_board, apple);
+  generate_apple_on_board(scaled_board, apple);
 
   
 
@@ -405,6 +440,11 @@ int main(int argc, char *argv[])
   unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
   direction red_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
+
+  int msec = 0;
+  // clock_t before = clock(); 
+  time_t before = time(NULL);
+  // msec = clock();
 
   while (1) {
      
@@ -425,27 +465,52 @@ int main(int argc, char *argv[])
     //check input from keyboard and set snake direction
     read_from_keyboard(snake1, snake2);
 
-
     if(snake1->is_alive == 1){
         change_direction(snake1, red_knob_direction);
-        move_snake(board2, snake1);
+        // print_snake(snake1,scaled_board);
+        move_snake(scaled_board, snake1);
+            //DEBUG output
+        // print_snake(snake1,scaled_board);
+        // print_board(scaled_board);
+
+        snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
+        
      }
      if(snake2->is_alive == 1){
        change_direction(snake2,blue_knob_direction);
-       move_snake(board2,snake2);
+       move_snake(scaled_board,snake2);
+      //  snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
+       
      }
 
-     if(board2[apple->y][apple->x] != APPLE){
-      reset_apple(board2, apple);
-      generate_apple_on_board(board2, apple);
+     if(scaled_board[apple->y][apple->x] != APPLE){
+      reset_apple(scaled_board, apple);
+      generate_apple_on_board(scaled_board, apple);
      }
-
 
     
-    // update screen with actual board
-    update_board_view(board2,board);
-    update_scores(snake1, snake2, board);
-    print_screen(parlcd_mem_base,board);
+    
+
+    
+    // update lcd_board from scaled_board
+    update_board_view(scaled_board,lcd_board);
+
+    // add statusbar
+    update_scores(snake1, snake2, lcd_board);
+
+
+    clock_t difference = time(NULL) - before;
+    msec = difference;// * 1000 / CLOCKS_PER_SEC;
+    
+
+    // printf("Time taken %d seconds %d milliseconds\n",msec/1000, msec%1000);
+    update_timer(lcd_board,msec);
+
+    // update microzed screen
+    print_screen(parlcd_mem_base,lcd_board);
+
+    
+
 
       //small sleep 
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
