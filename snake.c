@@ -1,56 +1,23 @@
-#include<stdio.h>
-#include<stdlib.h>
+#include "snake.h"
+#include "screen_data.h"
 
-typedef enum board_values{
-    EMPTY_PIXEL = 0,
-    SNAKE1 = 1,
-    SNAKE2 = 2,
-    APPLE
-} board_values;
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <sys/mman.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <malloc.h>
+#include <string.h>
+#include <byteswap.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <time.h>
 
-typedef enum direction{
-    UP,
-    DOWN,
-    RIGHT,
-    LEFT,
-    NULL_DIRECTION
-} direction;
-
-
-#define scaleX 100
-#define scaleY 100
-
-int max(int a, int b){
-    return a > b ? a : b;
-}
-
-int min(int a, int b){
-    return a > b ? b : a;
-}
-
-typedef struct snake_body_t
-{
-    int y;
-    int x;
-    struct snake_body_t *next;
-    struct snake_body_t *prev;
-
-} snake_body_t;
-
-
-typedef struct snake_t
-{
-    int is_alive;
-    board_values snake_value;
-    
-    direction snake_direction;
-    snake_body_t *head;
-    snake_body_t *tail;
-    int count;
-    
-} snake_t;
-
-
+int is_random = 0;
 
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
@@ -65,6 +32,7 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
     new_snake->head = head;
     new_snake->tail = tail;
     new_snake->is_alive = 1;
+    new_snake->has_eaten = 0;
     new_snake->snake_value = snake_board_value;
     new_snake->snake_direction = UP;
 
@@ -83,9 +51,7 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
 
         if(i == head_y){
             new_body->next = head;
-            // (*new_body).next = &head;
             head->prev = new_body;
-            // head.prev = new_body;
         }
     }
     
@@ -93,85 +59,148 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
     return new_snake;
 }
 
-void kill_snake(board_values board[scaleY][scaleX], snake_t *s){
-    for(snake_body_t *i = s->tail; i != NULL; i = i->next){
-        board[i->y][i->x] = EMPTY_PIXEL;
-    }
-}
-
-
 void free_snake(snake_t *s){
     for(snake_body_t *i = s->tail; i != s->head; ){
         snake_body_t *tmp = i;
         i = i->next;
-        printf("FREE with y = %d, x = %d\n", tmp->y,tmp->x);
         free(tmp);
-
     }
-    printf("\n");
     free(s);
 
 }
 
-
-direction change_direction(direction old_direction, direction knobDirection){
-    if(knobDirection != RIGHT && knobDirection != LEFT){
-        return old_direction;
-    }
-
-    direction newDirection = old_direction;
-
-    switch (old_direction)
-    {
-    case RIGHT:
-        if(knobDirection == RIGHT){
-            newDirection = DOWN;
-        }
-        else{
-            newDirection = UP;
-        }
-        break;
-    case LEFT:
-        if(knobDirection == RIGHT){
-            newDirection = UP;
-        }
-        else{
-            newDirection = DOWN;
-        }
-        break;
-    case UP:
-        newDirection = knobDirection;
-        break;
-    case DOWN:
-        if(knobDirection == RIGHT){
-            newDirection = LEFT;
-        }
-        else{
-            newDirection = RIGHT;
-        }
-        break;
-    }
-
-    return newDirection;
+apple_t *init_apple(){
+    apple_t *new_apple = malloc(sizeof(apple_t));
+    return new_apple;
 }
 
-void remove_snake_from_board(board_values board[scaleY][scaleX], snake_t s){
-    for(int i = 0; i < scaleY; i++){
-        for(int j = 0; j < scaleX; j++){
-            if(board[i][j] == s.snake_value){
-                board[i][j] = EMPTY_PIXEL;
-            }
-        }
+void free_apple(apple_t *apple){
+    free(apple);
+}
+
+
+
+void remove_snake_from_board(board_values **board, snake_t *s){
+    for(snake_body_t *i = s->tail; i != s->head; i = i->next){
+        board[i->y][i->x] = EMPTY_PIXEL;
     }
+    board[s->head->y][s->head->x] = EMPTY_PIXEL;
+}
+
+
+
+
+void change_direction(snake_t *s, direction knobDirection){
+    if(knobDirection != RIGHT && knobDirection != LEFT){
+        return;
+    }
+
+    switch (s->snake_direction)
+    {
+    case RIGHT:
+        // RIGHT + RIGHT
+        if(knobDirection == RIGHT){
+            s->snake_direction = DOWN;
+            return;
+        }
+        // RIGHT + LEFT
+        s->snake_direction = UP;
+        return;
+    case LEFT:
+        // LEFT + RIGHT
+        if(knobDirection == RIGHT){
+            s->snake_direction = UP;
+            return;
+        }
+        // LEFT + LEFT
+        s->snake_direction = DOWN;
+        return;
+    case UP:
+        // UP + RIGHT or UP + LEFT
+        s->snake_direction = knobDirection;
+        return;
+    case DOWN:
+        // DOWM + RIGHT
+        if(knobDirection == RIGHT){
+            s->snake_direction = LEFT;
+            return;
+        }
+        // DOWN + LEFT
+        s->snake_direction = RIGHT;
+        return;
+    }
+}
+
+void read_from_keyboard(snake_t *snake1, snake_t *snake2){
+    char input_symbol;
+    if(read(STDIN_FILENO, &input_symbol, 1) == 1){
+      switch(input_symbol){
+        case(PLAYER1_UP):
+          if(snake1->snake_direction == DOWN){
+            break;
+          }
+          snake1->snake_direction = UP;
+          break;
+        case(PLAYER1_LEFT):
+          if(snake1->snake_direction == RIGHT){
+            break;
+          }
+          snake1->snake_direction = LEFT;
+          break;
+        case(PLAYER1_DOWN):
+          if(snake1->snake_direction == UP){
+            break;
+          }
+          snake1->snake_direction = DOWN;
+          break;
+        case(PLAYER1_RIGHT):
+          if(snake1->snake_direction == LEFT){
+            break;
+          }
+          snake1->snake_direction = RIGHT;
+          break;
+
+        case(PLAYER2_UP):
+          if(snake2->snake_direction == DOWN){
+            break;
+          }
+          snake2->snake_direction = UP;
+          break;
+        case(PLAYER2_LEFT):
+          if(snake2->snake_direction == RIGHT){
+            break;
+          }
+          snake2->snake_direction = LEFT;
+          break;
+
+        case(PLAYER2_DOWN):
+          if(snake2->snake_direction == UP){
+            break;
+          }
+          snake2->snake_direction = DOWN;
+          break;
+        case(PLAYER2_RIGHT):
+          if(snake2->snake_direction == LEFT){
+            break;
+          }
+          snake2->snake_direction = RIGHT;
+          break;
+        case('p'):
+            while(read(STDIN_FILENO, &input_symbol, 1) != 1){}
+            break;
+        case('q'):
+          exit(1);
+      }
+    }   
 }
 
 void remove_tail(snake_t *s){
-    // s->tail = s->tail.
-    s->tail->next->prev = s->tail;
     s->tail = s->tail->next;
     free(s->tail->prev);
     s->tail->prev = NULL;
 }
+
+
 
 void add_new_head(snake_t *s, int new_head_y, int new_head_x){
     snake_body_t *new_head = malloc(sizeof(snake_body_t));
@@ -183,14 +212,9 @@ void add_new_head(snake_t *s, int new_head_y, int new_head_x){
 }
 
 
-void move_snake(board_values board[scaleY][scaleX], snake_t *s){
+void move_snake(board_values **board, snake_t *s){
 
-    // remove tail pixel
-
-    board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
-    remove_tail(s);
-
-    // change head coordinates
+    // init new head coordinates
     int new_head_x = s->head->x, new_head_y = s->head->y;
     switch (s->snake_direction)
     {
@@ -208,35 +232,108 @@ void move_snake(board_values board[scaleY][scaleX], snake_t *s){
         break;
     }
 
-
-    if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX){
+    // kill snake if out the board
+    if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX || board[new_head_y][new_head_x] == STATUS_BAR){// || board[new_head_y][new_head_x] != EMPTY_PIXEL &&
+        // board[new_head_y][new_head_x] != APPLE){
         s->is_alive = 0;
-        kill_snake(board,s);
+        remove_snake_from_board(board,s);
+        return;
     }
-    else{
-        add_new_head(s,new_head_y,new_head_x);
-        board[s->head->y][s->head->x] = s->snake_value;
+    
+    // remove tail pixel if snake apple hasn't eaten.
+    if(board[new_head_y][new_head_x] != APPLE){
+        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+        remove_tail(s);
+        board[s->tail->y][s->tail->x] = s->snake_value;
     }
+
+    if(board[new_head_y][new_head_x] == s->snake_value){
+        while(s->tail->y != new_head_y || s->tail->x != new_head_x){
+            board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+            remove_tail(s);
+            s->count--;
+        }
+        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+        remove_tail(s);
+        s->count--;
+        s->has_eaten = 1;
+    }
+
+
+    if(board[new_head_y][new_head_x] == APPLE){
+        s->count++;
+    }
+    
+
+    // add new head to snake
+    add_new_head(s,new_head_y,new_head_x);
+    board[s->head->y][s->head->x] = s->snake_value;
 
 }
 
+int update_snake_from_board(board_values **board, snake_t *s){
+    int is_snake_ok = 1;
 
-
-
-void generate_board(board_values board[scaleY][scaleX]){
-    for(int i = 0; i < scaleY; i++){
-        for(int j = 0; j < scaleX; j++){
-            if(j == 20 && i >= 20 && i <= 90){
-                board[i][j] = SNAKE1;
-            }
-            if( j == 80 && i >= 20 && i <= 90){
-                board[i][j] = SNAKE2;
-            }
+    
+    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
+        if(board[i->y][i->x] != s->snake_value){
+            is_snake_ok = 0;
+            break;
         }
     }
+
+    if(is_snake_ok == 1 && s->has_eaten == 1){return 1;}
+    if(is_snake_ok == 1){return 0;}
+
+    if(board[s->head->y][s->head->x] != s->snake_value){
+        s->is_alive = 0;
+        remove_snake_from_board(board,s);
+        return 1;
+    }
+
+    while(board[s->tail->y][s->tail->x] == s->snake_value){
+        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+        remove_tail(s);
+        s->count--;
+    }
+    remove_tail(s);
+    s->count--;
+    return 1;
 }
 
-void print_board(board_values board[scaleY][scaleX]){
+
+void generate_snake_on_board(board_values **board, snake_t *s){
+
+    if(! (s->head->x == s->tail->x || s->head->y == s->tail->y) || s->head->x >= scaleX || s->head->y >= scaleY  || s->head->x < 0 || s->head->y < 0){
+        fprintf(stderr,"Error while mapping snake on board!");
+        exit(1);
+    }
+
+    for(snake_body_t *i = s->tail; i != NULL; i = i->next){
+        board[i->y][i->x] = s->snake_value;
+    }
+}
+
+void reset_apple(board_values **board, apple_t *apple){
+    if(is_random == 0){
+        is_random = 1;
+        srand(time(NULL));   // Random inicialisation
+    }
+    do{
+        apple->x = rand() % scaleX;
+        apple->y = rand() % scaleY;
+    }while(board[apple->y][apple->x] != EMPTY_PIXEL);
+}
+
+void generate_apple_on_board(board_values **board, apple_t *apple){
+    board[apple->y][apple->x] = APPLE;
+}
+
+
+
+
+// DEBUG
+void print_board(board_values **board){
     for(int i = 0; i < scaleY; i++){
         for(int j = 0; j < scaleX; j++){
             if(board[i][j] == EMPTY_PIXEL){
@@ -252,66 +349,11 @@ void print_board(board_values board[scaleY][scaleX]){
     printf("\n");
 }
 
-
-void generate_snake_on_board(board_values board[scaleY][scaleX], snake_t *s){
-    // for(snake_body_t s.head)
-
-    if(! (s->head->x == s->tail->x || s->head->y == s->tail->y) ){
-        fprintf(stderr,"Error while mapping snake on board!");
-        exit(1);
+//DEBUG
+void print_snake(snake_t *s, board_values **board){
+    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
+        printf("%d ", board[i->y][i->x]);
     }
-
-    for(snake_body_t *i = s->tail; i != s->head; i = i->next){
-        board[i->y][i->x] = s->snake_value;
-    }
-
+    printf("\n");
 }
 
-
-
-
-int main(){
-    board_values board[scaleY][scaleX] = {EMPTY_PIXEL};
-
-    // generate_board(board);
-    
-    
-    snake_t *snake1 = init_snake(20,20,90,20,SNAKE1);
-    snake_t *snake2 = init_snake(20,50,90,50,SNAKE2);
-
-    // for(snake_body_t *i = snake1->tail; i != snake1->head; i = i->next){
-    //     printf("%d %d\n",i->x,i->y);
-    // }
-    // printf("\n");
-    // for(snake_body_t *i = snake2->tail; i != snake2->head; i = i->next){
-    //     printf("%d %d\n",i->x,i->y);
-    // }
-
-
-    generate_snake_on_board(board, snake1);
-    generate_snake_on_board(board, snake2);
-    print_board(board);
-
-    direction knob_direction = NULL_DIRECTION;
-
-    for(int i = 0; i < 100; i++){
-        if(i == 5){
-            snake1->snake_direction = RIGHT;
-        }
-        if(snake1->is_alive == 1){
-            // snake1->snake_direction = change_direction(snake1->snake_direction, knob_direction);
-            move_snake(board, snake1);
-            print_board(board);
-        }
-        
-
-    }
-    free_snake(snake1);
-    free_snake(snake2);
-
-    // print_board(board);
-
-
-    
-
-}
