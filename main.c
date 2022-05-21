@@ -21,7 +21,9 @@ char *memdev="/dev/mem";
 #include "mzapo_regs.h"
 
 
+
 #include "snake.h"
+#include "text_print.h"
 
 
 
@@ -87,6 +89,7 @@ unsigned short *fb;
 #define BLUE_COLOR_RGB565    0x001F
 #define BLACK_COLOR_RGB565   0x0000
 #define WHITE_COLOR_RGB565  0xFFFF
+#define GREY_COLOR_RGB565  0xA534
 
 typedef enum lcd_colors{
   SNAKE_1_COLOR = RED_COLOR_RGB565,
@@ -94,23 +97,28 @@ typedef enum lcd_colors{
   APPLE_COLOR = BLACK_COLOR_RGB565,
   EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565,
   TEXT_COLOR = BLACK_COLOR_RGB565,
-  STATUS_BAR_COLOR = WHITE_COLOR_RGB565
+  STATUS_BAR_COLOR = WHITE_COLOR_RGB565,
+  MENU_COLOR = GREY_COLOR_RGB565
 } lcd_colors;
 
-
-union pixel{
-  unsigned short r;
-  unsigned short g;
-  unsigned short b;
-};
 
 #define RED_KNOB_MASK   0xff0000
 #define GREEN_KNOB_MASK 0x00ff00
 #define BLUE_KNOB_MASK  0x0000ff
 
-int SCREEN_X = 480;
-int SCREEN_Y = 320;
-int SCALE = 10;
+int const SCREEN_X = 480;
+int const SCREEN_Y = 320;
+int scale = 10;
+int scaleX = 48;
+int scaleY = 32;
+
+void set_scale(int new_scale){
+  scale = new_scale;
+  scaleX = SCREEN_X / scale;
+  scaleY = SCREEN_Y / scale;
+}
+
+
 
 
 void loading_indicator(unsigned char *mem_base){
@@ -120,7 +128,6 @@ void loading_indicator(unsigned char *mem_base){
   for (int i=0; i<30; i++) {
      *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
      val_line<<=1;
-    //  printf("LED val 0x%x\n", val_line);
      clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
 }
@@ -174,8 +181,8 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
 
     for(int i = 0; i < SCREEN_Y; i++){
       for(int j = 0; j < SCREEN_X; j++){
-        int boardI = i/SCALE;
-        int boardJ = j/SCALE;
+        int boardI = i/scale;
+        int boardJ = j/scale;
 
         lcd_board[i][j] = scaled_board[boardI][boardJ];
       }
@@ -205,7 +212,10 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
             draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
             break;
           case STATUS_BAR:
-            draw_pixel(parlcd_mem_base,j,i,WHITE_COLOR_RGB565);
+            draw_pixel(parlcd_mem_base,j,i,STATUS_BAR_COLOR);
+            break;
+          case MENU:
+            draw_pixel(parlcd_mem_base,j,i,MENU_COLOR);
             break;
       }
     }
@@ -213,24 +223,6 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
 
   update_screen(parlcd_mem_base);
 }
-
-
-// TODO remove it
-// void print_board(board_values **board){
-//   for(int i = 0; i < SCREEN_Y; i++){
-//     for(int j = 0; j < SCREEN_X; j++){
-//       switch(board[i][j]){
-//         case EMPTY_PIXEL:
-//           printf("E");
-//         case SNAKE1:
-//           printf("S");  
-//       }
-//     printf("\n");
-//   }
-//   printf("\n");
-//   }
-
-// }
 
 
 // TODO remove it
@@ -292,86 +284,70 @@ void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_re
 
 }
 
-#include "font_print.h"
-
-void update_scores(snake_t *snake1, snake_t *snake2, board_values **lcd_board){
-  char str1[] = "Score:";
-  char snake1_count[10], snake2_count[10];
-  sprintf(snake1_count, "%d", snake1->count);
-  strcat(str1,snake1_count);
-  print_string(10,10, str1,SNAKE1,1,(int**)lcd_board);
-
-  char str2[] = "Score:";
-  sprintf(snake2_count, "%d", snake2->count);
-  strcat(str2,snake2_count);
-  print_string(100,10, str2,SNAKE2,1,(int**)lcd_board);
-
-
-}
-
-void update_timer(board_values **lcd_board, int msec){
-  struct tm *time = msec;
-
-  char timer_mins[10], timer_secs[10];
-
-  sprintf(timer_mins, "%02d:", (msec)/60);
-  sprintf(timer_secs, "%02d", (msec)%60);
-  strcat(timer_mins,timer_secs);
-
-  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1,(void**)lcd_board);
-}
 
 
 
-int main(int argc, char *argv[])
-{
 
-  unsigned char *mem_base;
-  unsigned char *parlcd_mem_base;
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
-  fb  = (unsigned short *)malloc(320*480*2);
 
-  if (serialize_lock(1) <= 0) {
-    printf("System is occupied\n");
 
-    if (1) {
-      printf("Waitting\n");
-      /* Wait till application holding lock releases it or exits */
-      serialize_lock(0);
+void make_menu(board_values **board){
+  for(int i = 0; i < scaleY; i++){
+    for(int j = 0; j < scaleX; j++){
+      board[i][j] = MENU;
     }
   }
+}
+
+void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_values **lcd_board, board_values **scaled_board){
+
+  uint32_t rgb_knobs_value;
+
+  unsigned int previous_green_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & GREEN_KNOB_MASK;
+  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
+  direction green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
 
-  // Maping mem_base
-  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
-  if (mem_base == NULL){
-    exit(1);
+  int msec = 0;
+  time_t before = time(NULL);
+
+  while (1) {
+     
+
+    // Initialize structure to 0 seconds and 20 milliseconds
+    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
+
+    // set snakes status indicator
+    // set_snakes_LED(mem_base, snake1,snake2);
+
+
+    // Access register holding 8 bit relative knobs position
+    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+
+    // set knobs directions
+    set_knobs_direction(rgb_knobs_value,&previous_green_knob_value, &previous_blue_knob_value, &green_knob_direction, &blue_knob_direction);
+
+    //check input from keyboard and set snake direction
+    // read_from_keyboard(snake1, snake2);
+
+
+    
+
+    
+    // update lcd_board from scaled_board
+    update_board_view(scaled_board,lcd_board);
+
+    // update microzed screen
+    print_screen(parlcd_mem_base,lcd_board);
+
+    
+
+
+      //small sleep 
+    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
+}
 
-  loading_indicator(mem_base);
-
-  //Maping parlcd_mem_base
-  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
-  if( parlcd_mem_base == NULL){
-    exit(1);
-  }
-
-  parlcd_hx8357_init(parlcd_mem_base);
-
-  // set terminal
-  system ("/bin/stty raw");
-  system("stty -g > ~/.stty-save");
-  system("stty -icanon min 0 time 0");
-
-
-
-
-  board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
-
-  set_scale(SCREEN_Y/SCALE,SCREEN_X/SCALE);
-
-  board_values **scaled_board = init_board(scaleY,scaleX);
-
+void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_values **lcd_board, board_values **scaled_board){
 
   snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
   snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
@@ -396,9 +372,7 @@ int main(int argc, char *argv[])
 
 
   int msec = 0;
-  // clock_t before = clock(); 
   time_t before = time(NULL);
-  // msec = clock();
 
   while (1) {
      
@@ -448,15 +422,13 @@ int main(int argc, char *argv[])
     update_board_view(scaled_board,lcd_board);
 
     // add statusbar
-    update_scores(snake1, snake2, lcd_board);
+    print_scores(snake1->count, snake2->count, lcd_board);
 
-
-    clock_t difference = time(NULL) - before;
-    msec = difference;// * 1000 / CLOCKS_PER_SEC;
+    msec = time(NULL) - before;
     
 
     // printf("Time taken %d seconds %d milliseconds\n",msec/1000, msec%1000);
-    update_timer(lcd_board,msec);
+    print_timer(lcd_board,msec);
 
     // update microzed screen
     print_screen(parlcd_mem_base,lcd_board);
@@ -467,6 +439,56 @@ int main(int argc, char *argv[])
       //small sleep 
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
+}
+
+
+int main(int argc, char *argv[])
+{
+  unsigned char *mem_base;
+  unsigned char *parlcd_mem_base;
+  fb  = (unsigned short *)malloc(320*480*2);
+
+  if (serialize_lock(1) <= 0) {
+    printf("System is occupied\n");
+
+    if (1) {
+      printf("Waitting\n");
+      /* Wait till application holding lock releases it or exits */
+      serialize_lock(0);
+    }
+  }
+
+
+  // Maping mem_base
+  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
+  if (mem_base == NULL){
+    exit(1);
+  }
+
+  loading_indicator(mem_base);
+
+  //Maping parlcd_mem_base
+  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
+  if( parlcd_mem_base == NULL){
+    exit(1);
+  }
+
+  parlcd_hx8357_init(parlcd_mem_base);
+
+  // set terminal
+  system ("/bin/stty raw");
+  system("stty -g > ~/.stty-save");
+  system("stty -icanon min 0 time 0");
+
+  board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
+  set_scale(10);
+  board_values **scaled_board = init_board(scaleY,scaleX);
+
+  make_menu(scaled_board);
+  show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
+
+  // start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
+  
 
   serialize_unlock();
   return 0;
