@@ -335,26 +335,16 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
   unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
 
   int msec = 0;
   time_t before = time(NULL);
   int current_menu = 1;
 
   while (1) {
-     
-
-    // Initialize structure to 0 seconds and 20 milliseconds
-    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
-
-    // set snakes status indicator
-    // set_snakes_LED(mem_base, snake1,snake2);
-
-
     // Access register holding 8 bit relative knobs position
     rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
 
-    // printf("0x%08x\n",rgb_knobs_value);
-    // set knobs directions
     set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
     
@@ -368,7 +358,6 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
       switch(current_menu){
         case 1:
           printf("START GAME\n");
-          // start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
           return;
         case 2:
           if(game->is_multiplayer == 1){
@@ -449,8 +438,7 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
 
   
   if(game->is_multiplayer == 0){
-    snake2->is_alive = 0;
-    remove_snake_from_board(scaled_board, snake2);
+    kill_snake(scaled_board, snake2);
   }
 
   
@@ -544,6 +532,14 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
       //small sleep 
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
+
+  free_apple(apple);
+  free_board(lcd_board,SCREEN_Y);
+  free_board(scaled_board, scaleY);
+  free_game(game);
+  free_snake(snake1);
+  free_snake(snake2);
+
 }
 
 
