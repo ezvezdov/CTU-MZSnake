@@ -1,6 +1,7 @@
 #include "text_print.h"
 #include "screen_data.h"
 #include "font_types.h"
+#include "options.h"
 
 
 font_descriptor_t *font = &font_winFreeSystem14x16;
@@ -71,4 +72,51 @@ void print_timer(board_values **lcd_board, int msec){
   strcat(timer_mins,timer_secs);
 
   print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1, lcd_board);
+}
+
+int print_menu_items(board_values **lcd_board){
+  char * new_game_str = "New game";
+  print_string( 10 * scale,  4 * 1 * scale, new_game_str, TEXT, 1, lcd_board);
+
+  char game_type_str[100] = "Game type: ";
+  if(game->is_multiplayer == 1){
+    strcat(game_type_str, "Multiplayer");
+  }
+  else{  
+    strcat(game_type_str, "Singleplayer");
+  }
+  print_string( 10 * scale,  4 * 2 * scale, game_type_str, TEXT, 1, lcd_board);
+
+  char speed_str[100] = "Speed: ";
+  if(game->speed == 0){
+    strcat(speed_str, "Easy");
+  }
+  else if(game->speed == 1){
+    strcat(speed_str, "Normal");
+  }
+  else if(game->speed == 2){
+    strcat(speed_str, "Hard");
+  }
+  print_string( 10 * scale,  4 * 3 * scale, speed_str, TEXT, 1, lcd_board);
+
+  char borders_str[100] = "Borders: ";
+  if(game->is_border == 0){
+    strcat(borders_str, "No");
+  }
+  else{
+    strcat(borders_str, "Yes");
+  }
+  print_string( 10 * scale,  4 * 4 * scale, borders_str, TEXT, 1, lcd_board);
+
+  char eating_str[100] = "Eating: ";
+  if(game->is_eating == 1){
+    strcat(eating_str, "Yes");
+  }
+  else if(game->is_eating == 0){
+    strcat(eating_str, "No");
+  }
+  print_string( 10 * scale,  4 * 5 * scale, eating_str, TEXT, 1, lcd_board);
+
+  char * exit_str = "Exit";
+  print_string( 10 * scale,  4 * 6 * scale, exit_str, TEXT, 1, lcd_board);
 }

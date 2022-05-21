@@ -3,7 +3,7 @@
 
 extern int SCREEN_X;
 extern int SCREEN_Y;
-extern int SCALE;
+extern int scale;
 extern int scaleX;
 extern int scaleY;
 
