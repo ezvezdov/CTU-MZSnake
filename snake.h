@@ -24,14 +24,25 @@ typedef enum direction{
 
 typedef enum players_keys{
     PLAYER1_UP = 'w',
+    PLAYER1_UP_CAP = 'W',
     PLAYER1_DOWN = 's',
+    PLAYER1_DOWN_CAP = 'S',
     PLAYER1_RIGHT = 'd',
+    PLAYER1_RIGHT_CAP = 'D',
     PLAYER1_LEFT = 'a',
+    PLAYER1_LEFT_CAP = 'A',
     PLAYER2_UP = 'i',
+    PLAYER2_UP_CAP = 'I',
     PLAYER2_DOWN = 'k',
+    PLAYER2_DOWN_CAP = 'K',
     PLAYER2_RIGHT = 'l',
+    PLAYER2_RIGHT_CAP = 'L',
     PLAYER2_LEFT = 'j',
-    QUIT = 'q'
+    PLAYER2_LEFT_CAP = 'J',
+    PAUSE = 'p',
+    PAUSE_CAP = 'P',
+    QUIT = 'q',
+    QUIT_CAP = 'Q'
 } players_keys;
 
 

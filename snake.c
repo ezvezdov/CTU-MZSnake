@@ -136,60 +136,68 @@ void read_from_keyboard(snake_t *snake1, snake_t *snake2){
     char input_symbol;
     if(read(STDIN_FILENO, &input_symbol, 1) == 1){
       switch(input_symbol){
+        case(PLAYER1_UP_CAP):
         case(PLAYER1_UP):
           if(snake1->snake_direction == DOWN){
             break;
           }
           snake1->snake_direction = UP;
           break;
+        case(PLAYER1_LEFT_CAP):
         case(PLAYER1_LEFT):
           if(snake1->snake_direction == RIGHT){
             break;
           }
           snake1->snake_direction = LEFT;
           break;
+        case(PLAYER1_DOWN_CAP):
         case(PLAYER1_DOWN):
           if(snake1->snake_direction == UP){
             break;
           }
           snake1->snake_direction = DOWN;
           break;
+        case(PLAYER1_RIGHT_CAP):
         case(PLAYER1_RIGHT):
           if(snake1->snake_direction == LEFT){
             break;
           }
           snake1->snake_direction = RIGHT;
           break;
-
+        case(PLAYER2_UP_CAP):
         case(PLAYER2_UP):
           if(snake2->snake_direction == DOWN){
             break;
           }
           snake2->snake_direction = UP;
           break;
+        case(PLAYER2_LEFT_CAP):
         case(PLAYER2_LEFT):
           if(snake2->snake_direction == RIGHT){
             break;
           }
           snake2->snake_direction = LEFT;
           break;
-
+        case(PLAYER2_DOWN_CAP):
         case(PLAYER2_DOWN):
           if(snake2->snake_direction == UP){
             break;
           }
           snake2->snake_direction = DOWN;
           break;
+        case(PLAYER2_RIGHT_CAP):
         case(PLAYER2_RIGHT):
           if(snake2->snake_direction == LEFT){
             break;
           }
           snake2->snake_direction = RIGHT;
           break;
-        case('p'):
+        case(PAUSE_CAP):
+        case(PAUSE):
             while(read(STDIN_FILENO, &input_symbol, 1) != 1){}
             break;
-        case('q'):
+        case(QUIT_CAP):
+        case(QUIT):
           exit(1);
       }
     }   
