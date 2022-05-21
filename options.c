@@ -5,6 +5,7 @@ game_t *init_game(){
   new_game->is_multiplayer = 0;
   new_game->speed = 1;
   new_game->is_border = 1;
+  new_game->is_eating = 1;
   return new_game;
 }
 

@@ -355,7 +355,6 @@ int print_menu_items(board_values **lcd_board){
   
   print_string( 10 * scale,  4 * 2 * scale, game_type_str, TEXT, 1, lcd_board);
 
-  // char * new_game_str3 = "Speed";
   char speed_str[100] = "Speed: ";
   if(game->speed == 0){
     strcat(speed_str, "Easy");
@@ -378,8 +377,14 @@ int print_menu_items(board_values **lcd_board){
 
   print_string( 10 * scale,  4 * 4 * scale, borders_str, TEXT, 1, lcd_board);
 
-  char * new_game_str5 = "Option 4";
-  print_string( 10 * scale,  4 * 5 * scale, new_game_str5, TEXT, 1, lcd_board);
+  char eating_str[100] = "Eating: ";
+  if(game->is_eating == 1){
+    strcat(eating_str, "Yes");
+  }
+  else if(game->is_eating == 0){
+    strcat(eating_str, "No");
+  }
+  print_string( 10 * scale,  4 * 5 * scale, eating_str, TEXT, 1, lcd_board);
 
   char * exit_str = "Exit";
   print_string( 10 * scale,  4 * 6 * scale, exit_str, TEXT, 1, lcd_board);
@@ -453,12 +458,12 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
           game->speed %= 3;
           break;
         case 4:
-          if(game->is_border == 1){
-            game->is_border = 0;
-          }
-          else{
-            game->is_border = 1;
-          }
+          game->is_border++;
+          game->is_border %= 1;
+          break;
+        case 5:
+          game->is_eating++;
+          game->is_eating %= 1;
           break;
         case 6:
           printf("EXIT GAME\n");

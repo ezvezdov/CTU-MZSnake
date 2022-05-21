@@ -5,6 +5,7 @@ typedef struct game_t{
   int is_multiplayer;
   int speed;
   int is_border;
+  int is_eating;
 }game_t;
 
 game_t *init_game();
