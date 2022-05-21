@@ -1,23 +1,10 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include "snake.h"
 #include "screen_data.h"
 #include "options.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <string.h>
-#include <byteswap.h>
-#include <getopt.h>
-#include <inttypes.h>
-#include <time.h>int is_random = 0;
-
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
     snake_t *new_snake = malloc(sizeof(snake_t));
@@ -101,8 +88,6 @@ void add_new_head(snake_t *s, int new_head_y, int new_head_x){
     s->head->next = new_head;
     s->head = new_head;
 }
-
-
 
 void change_direction(snake_t *s, direction knobDirection){
     if(knobDirection != RIGHT && knobDirection != LEFT){
@@ -216,9 +201,6 @@ void read_from_keyboard(snake_t *snake1, snake_t *snake2){
     }   
 }
 
-
-
-
 void move_snake(board_values **board, snake_t *s){
 
     // init new head coordinates
@@ -285,7 +267,6 @@ void move_snake(board_values **board, snake_t *s){
         s->count++;
     }
     
-
     // add new head to snake
     add_new_head(s,new_head_y,new_head_x);
     board[s->head->y][s->head->x] = s->snake_value;

@@ -3,6 +3,8 @@
 #include "font_types.h"
 #include "options.h"
 
+#include <string.h>
+
 
 font_descriptor_t *font = &font_winFreeSystem14x16;
 
