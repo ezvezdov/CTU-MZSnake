@@ -10,7 +10,8 @@ typedef enum board_values{
     APPLE,
     TEXT,
     STATUS_BAR,
-    MENU
+    MENU,
+    SELECTED_MENU_ITEM
 } board_values;
 
 typedef enum direction{
