@@ -16,9 +16,7 @@
 #include <byteswap.h>
 #include <getopt.h>
 #include <inttypes.h>
-#include <time.h>
-
-int is_random = 0;
+#include <time.h>int is_random = 0;
 
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
@@ -70,14 +68,7 @@ void free_snake(snake_t *s){
 
 }
 
-apple_t *init_apple(){
-    apple_t *new_apple = malloc(sizeof(apple_t));
-    return new_apple;
-}
 
-void free_apple(apple_t *apple){
-    free(apple);
-}
 
 
 
@@ -348,20 +339,7 @@ void generate_snake_on_board(board_values **board, snake_t *s){
     }
 }
 
-void reset_apple(board_values **board, apple_t *apple){
-    if(is_random == 0){
-        is_random = 1;
-        srand(time(NULL));   // Random inicialisation
-    }
-    do{
-        apple->x = rand() % scaleX;
-        apple->y = rand() % scaleY;
-    }while(board[apple->y][apple->x] != EMPTY_PIXEL);
-}
 
-void generate_apple_on_board(board_values **board, apple_t *apple){
-    board[apple->y][apple->x] = APPLE;
-}
 
 
 

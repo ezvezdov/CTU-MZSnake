@@ -25,6 +25,8 @@ char *memdev="/dev/mem";
 #include "snake.h"
 #include "text_print.h"
 #include "options.h"
+#include "board.h"
+#include "apple.h"
 
 
 unsigned short *fb;
@@ -253,31 +255,7 @@ void print_scaled_board(board_values **board){
 }
 
 
-board_values **init_board(int max_y, int max_x){
-  board_values **board = malloc(max_y * sizeof(board_values*));
-  for(int i = 0; i < max_y; i++){
-    board[i] = malloc(max_x * sizeof(board_values));
-    for(int j = 0; j < max_x; j++){
-      board[i][j] = EMPTY_PIXEL;
-    }
-  }
-  return board;
-}
 
-void free_board(board_values ** board,int max_y){
-  for(int i = 0; i < max_y; i++){
-    free(board[i]);
-  }
-  free(board);
-}
-
-void empty_board(board_values **scaled_board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      scaled_board[i][j] = EMPTY_PIXEL;
-    }
-  }
-}
 
 void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_red_knob_value, unsigned int *previous_green_knob_value, unsigned int *previous_blue_knob_value,
                           direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
