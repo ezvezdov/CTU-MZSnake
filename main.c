@@ -20,8 +20,6 @@ char *memdev="/dev/mem";
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
 
-
-
 #include "snake.h"
 #include "text_print.h"
 #include "options.h"
@@ -47,63 +45,35 @@ unsigned short *fb;
  */
 #define SPILED_REG_LED_LINE_o           0x004
 
-/*
- * The register to control 8 bit RGB components of brightness
- * of the first RGB LED
- */
+/* The register to control 8 bit RGB components of brightness of the first RGB LED */
 #define SPILED_REG_LED_RGB1_o           0x010
 
-/*
- * The register to control 8 bit RGB components of brightness
- * of the second RGB LED
- */
+/* The register to control 8 bit RGB components of brightness of the second RGB LED */
 #define SPILED_REG_LED_RGB2_o           0x014
 
-/*
- * The register which combines direct write to RGB signals
- * of the RGB LEDs, write to the keyboard scan register
- * and control of the two additional individual LEDs.
- * The direct write to RGB signals is orred with PWM
- * signal generated according to the values in previous
- * registers.
- */
-#define SPILED_REG_LED_KBDWR_DIRECT_o   0x018
-
-/*
- * Register providing access to unfiltered encoder channels
- * and keyboard return signals.
- */
+/* Register providing access to unfiltered encoder channels and keyboard return signals. */
 #define SPILED_REG_KBDRD_KNOBS_DIRECT_o 0x020
 
-/*
- * The register representing knobs positions as three
- * 8-bit values where each value is incremented
- * and decremented by the knob relative turning.
- */
+/* The register representing knobs positions */
 #define SPILED_REG_KNOBS_8BIT_o         0x024
 
 
-#define RED_COLOR_RGB888     0xff0000
-#define GREEN_COLOR_RGB888   0x00ff00
-#define BLUE_COLOR_RGB888    0x0000ff
-#define RED_COLOR_RGB565     0xF800
-#define GREEN_COLOR_RGB565   0x0FE0
-#define BLUE_COLOR_RGB565    0x001F
-#define BLACK_COLOR_RGB565   0x0000
-#define WHITE_COLOR_RGB565  0xFFFF
-#define GREY_COLOR_RGB565  0xC638
-#define YELLOW_COLOR_RGB565 0xFFE6
-
 typedef enum lcd_colors{
-  SNAKE_1_COLOR = RED_COLOR_RGB565,
-  SNAKE_2_COLOR = BLUE_COLOR_RGB565,
-  APPLE_COLOR = BLACK_COLOR_RGB565,
-  EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565,
-  TEXT_COLOR = BLACK_COLOR_RGB565,
-  STATUS_BAR_COLOR = WHITE_COLOR_RGB565,
-  MENU_COLOR = GREY_COLOR_RGB565,
-  SELECTED_MENU_ITEM_COLOR = YELLOW_COLOR_RGB565
+  SNAKE_1_COLOR = 0xF800,
+  SNAKE_2_COLOR = 0x0FE0,
+  APPLE_COLOR = 0x0000,
+  EMPTY_PIXEL_COLOR = 0x0FE0,
+  TEXT_COLOR = 0x0000,
+  STATUS_BAR_COLOR = 0xFFFF,
+  MENU_COLOR = 0xC638,
+  SELECTED_MENU_ITEM_COLOR = 0xFFE6
 } lcd_colors;
+
+typedef enum led_colors{
+  LED_RED = 0xff0000,
+  LED_GREEN = 0x00ff00,
+  LED_BLUE = 0x0000ff
+} led_colors;
 
 
 #define RED_KNOB_MASK     0x00ff0000
@@ -144,23 +114,23 @@ void loading_indicator(unsigned char *mem_base){
 
 void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
   if(snake1->is_alive == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_GREEN;
   }
   if(snake1->has_eaten == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = BLUE_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_BLUE;
   }
   if(snake1->is_alive == 0){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_RED;
   }
   
   if(snake2->is_alive == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_GREEN;
   }
   if(snake2->has_eaten == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = BLUE_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_BLUE;
   }
   if(snake2->is_alive == 0){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_RED;
   }
 }
 void update_screen(unsigned char *parlcd_mem_base){
@@ -216,7 +186,7 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
             draw_pixel(parlcd_mem_base,j,i,EMPTY_PIXEL_COLOR);
             break;
           case TEXT:
-            draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
+            draw_pixel(parlcd_mem_base,j,i,TEXT_COLOR);
             break;
           case STATUS_BAR:
             draw_pixel(parlcd_mem_base,j,i,STATUS_BAR_COLOR);
@@ -468,10 +438,7 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
   
 
   while (1) {
-     
-
     
-
     // set snakes status indicator
     set_snakes_LED(mem_base, snake1,snake2);
 
