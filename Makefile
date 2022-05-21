@@ -1,674 +1,94 @@
-#define _POSIX_C_SOURCE 200112L
-
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <string.h>
-#include <byteswap.h>
-#include <getopt.h>
-#include <inttypes.h>
-#include <time.h>
-
-char *memdev="/dev/mem";
-
-
-#include "mzapo_parlcd.h"
-#include "mzapo_phys.h"
-#include "mzapo_regs.h"
-
-
-
-#include "snake.h"
-#include "text_print.h"
-#include "options.h"
-
-
-unsigned short *fb;
-
-/*
- * Base address of the region used for mapping of the knobs and LEDs
- * peripherals in the ARM Cortex-A9 physical memory address space.
- */
-#define SPILED_REG_BASE_PHYS 0x43c40000
-
-/* Valid address range for the region */
-#define SPILED_REG_SIZE      0x00004000
-
-/*
- * Byte offset of the register which controls individual LEDs
- * in the row of 32 yellow LEDs. When the corresponding bit
- * is set (value 1) then the LED is lit.
- */
-#define SPILED_REG_LED_LINE_o           0x004
-
-/*
- * The register to control 8 bit RGB components of brightness
- * of the first RGB LED
- */
-#define SPILED_REG_LED_RGB1_o           0x010
-
-/*
- * The register to control 8 bit RGB components of brightness
- * of the second RGB LED
- */
-#define SPILED_REG_LED_RGB2_o           0x014
-
-/*
- * The register which combines direct write to RGB signals
- * of the RGB LEDs, write to the keyboard scan register
- * and control of the two additional individual LEDs.
- * The direct write to RGB signals is orred with PWM
- * signal generated according to the values in previous
- * registers.
- */
-#define SPILED_REG_LED_KBDWR_DIRECT_o   0x018
-
-/*
- * Register providing access to unfiltered encoder channels
- * and keyboard return signals.
- */
-#define SPILED_REG_KBDRD_KNOBS_DIRECT_o 0x020
-
-/*
- * The register representing knobs positions as three
- * 8-bit values where each value is incremented
- * and decremented by the knob relative turning.
- */
-#define SPILED_REG_KNOBS_8BIT_o         0x024
-
-
-#define RED_COLOR_RGB888     0xff0000
-#define GREEN_COLOR_RGB888   0x00ff00
-#define BLUE_COLOR_RGB888    0x0000ff
-#define RED_COLOR_RGB565     0xF800
-#define GREEN_COLOR_RGB565   0x0FE0
-#define BLUE_COLOR_RGB565    0x001F
-#define BLACK_COLOR_RGB565   0x0000
-#define WHITE_COLOR_RGB565  0xFFFF
-#define GREY_COLOR_RGB565  0xC638
-#define YELLOW_COLOR_RGB565 0xFFE6
-
-typedef enum lcd_colors{
-  SNAKE_1_COLOR = RED_COLOR_RGB565,
-  SNAKE_2_COLOR = BLUE_COLOR_RGB565,
-  APPLE_COLOR = BLACK_COLOR_RGB565,
-  EMPTY_PIXEL_COLOR = GREEN_COLOR_RGB565,
-  TEXT_COLOR = BLACK_COLOR_RGB565,
-  STATUS_BAR_COLOR = WHITE_COLOR_RGB565,
-  MENU_COLOR = GREY_COLOR_RGB565,
-  SELECTED_MENU_ITEM_COLOR = YELLOW_COLOR_RGB565
-} lcd_colors;
-
-
-#define RED_KNOB_MASK     0x00ff0000
-#define GREEN_KNOB_MASK   0x0000ff00
-#define BLUE_KNOB_MASK    0x000000ff
-#define KNOBS_CLICK_MASK  0x0f000000
-#define RED_KNOB_CLICK    0x04000000
-#define GREEN_KNOB_CLICK  0x02000000
-#define BLUE_KNOB_CLICK   0x01000000
-
-int const SCREEN_X = 480;
-int const SCREEN_Y = 320;
-int scale = 10;
-int scaleX = 48;
-int scaleY = 32;
-int status_bar_end = 3;
-
-void set_scale(int new_scale){
-  scale = new_scale;
-  scaleX = SCREEN_X / scale;
-  scaleY = SCREEN_Y / scale;
-}
-
-game_t *game;
-
-
-
-void loading_indicator(unsigned char *mem_base){
-  //loading animation using LEDs line
-  uint32_t val_line=5;
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
-  for (int i=0; i<30; i++) {
-     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-     val_line<<=1;
-     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
-  }
-}
-
-void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
-  if(snake1->is_alive == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = GREEN_COLOR_RGB888;
-  }
-  if(snake1->has_eaten == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = BLUE_COLOR_RGB888;
-  }
-  if(snake1->is_alive == 0){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = RED_COLOR_RGB888;
-  }
-  
-  if(snake2->is_alive == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = GREEN_COLOR_RGB888;
-  }
-  if(snake2->has_eaten == 1){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = BLUE_COLOR_RGB888;
-  }
-  if(snake2->is_alive == 0){
-    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = RED_COLOR_RGB888;
-  }
-}
-void update_screen(unsigned char *parlcd_mem_base){
-    // update_screen
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
-    for (int ptr = 0; ptr < SCREEN_X*SCREEN_Y ; ptr++) {
-        parlcd_write_data(parlcd_mem_base, fb[ptr]);
-    }
-}
-
-void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short color) {
-  if (x >= 0 && x < SCREEN_X && y >= 0 && y < SCREEN_Y) {
-    fb[x+480*y] = color;
-  }
-}
-
-void print_statusbar(board_values ** scaled_board){
-  for(int i = 0; i < 3; i++){
-        for(int j = 0; j < scaleX; j++){
-          scaled_board[i][j] = STATUS_BAR;
-        }
-  }
-}
-
-void update_board_view(board_values **scaled_board, board_values **lcd_board){
-    for(int i = 0; i < SCREEN_Y; i++){
-      for(int j = 0; j < SCREEN_X; j++){
-        int boardI = i/scale;
-        int boardJ = j/scale;
-
-        lcd_board[i][j] = scaled_board[boardI][boardJ];
-      }
-    }
-}
-
-
-
-
-void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
-  for(int i = 0; i < SCREEN_Y; i++){
-    for(int j = 0; j < SCREEN_X; j++){
-      switch(lcd_board[i][j]){
-          case SNAKE1:
-            draw_pixel(parlcd_mem_base,j,i,SNAKE_1_COLOR);
-            break;
-          case SNAKE2:
-            draw_pixel(parlcd_mem_base,j,i,SNAKE_2_COLOR);  
-            break;
-          case APPLE:
-            draw_pixel(parlcd_mem_base,j,i,APPLE_COLOR);
-            break;
-          case EMPTY_PIXEL:
-            draw_pixel(parlcd_mem_base,j,i,EMPTY_PIXEL_COLOR);
-            break;
-          case TEXT:
-            draw_pixel(parlcd_mem_base,j,i,BLACK_COLOR_RGB565);
-            break;
-          case STATUS_BAR:
-            draw_pixel(parlcd_mem_base,j,i,STATUS_BAR_COLOR);
-            break;
-          case MENU:
-            draw_pixel(parlcd_mem_base,j,i,MENU_COLOR);
-            break;
-          case SELECTED_MENU_ITEM:
-            draw_pixel(parlcd_mem_base,j,i,SELECTED_MENU_ITEM_COLOR);
-            break;
-      }
-    }
-  }
-
-  update_screen(parlcd_mem_base);
-}
-
-
-// TODO remove it
-void print_scaled_board(board_values **board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      switch(board[i][j]){
-        case EMPTY_PIXEL:
-          printf("E");
-          break;
-        case SNAKE1:
-          printf("S");  
-          break;
-      }
-    }
-    printf("\n");
-  }
-  printf("\n");
-
-}
-
-
-board_values **init_board(int max_y, int max_x){
-  board_values **board = malloc(max_y * sizeof(board_values*));
-  for(int i = 0; i < max_y; i++){
-    board[i] = malloc(max_x * sizeof(board_values));
-    for(int j = 0; j < max_x; j++){
-      board[i][j] = EMPTY_PIXEL;
-    }
-  }
-  return board;
-}
-
-void free_board(board_values ** board,int max_y){
-  for(int i = 0; i < max_y; i++){
-    free(board[i]);
-  }
-  free(board);
-}
-
-void empty_board(board_values **scaled_board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      scaled_board[i][j] = EMPTY_PIXEL;
-    }
-  }
-}
-
-void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_red_knob_value, unsigned int *previous_green_knob_value, unsigned int *previous_blue_knob_value,
-                          direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
-        
-    unsigned int new_RED_knob_value = (unsigned int) rgb_knobs_value & RED_KNOB_MASK;
-    unsigned int new_GREEN_knob_value = (unsigned int) rgb_knobs_value & GREEN_KNOB_MASK;
-    unsigned int new_BLUE_knob_value = (unsigned int) rgb_knobs_value & BLUE_KNOB_MASK;
-
-    *red_knob_direction = NULL_DIRECTION;
-    *green_knob_direction = NULL_DIRECTION;
-    *blue_knob_direction = NULL_DIRECTION;
-
-    if(*previous_red_knob_value - new_RED_knob_value >= 0x00030000 && *previous_red_knob_value - new_RED_knob_value < 0x000f0000){
-       *red_knob_direction = LEFT;
-    }
-    else if(new_RED_knob_value - *previous_red_knob_value >= 0x00030000 && new_RED_knob_value - *previous_red_knob_value < 0x000f0000){
-      *red_knob_direction = RIGHT;
-    }
-
-    if(*previous_green_knob_value - new_GREEN_knob_value >= 0x00000300 && *previous_green_knob_value - new_GREEN_knob_value < 0x00000f00){
-       *green_knob_direction = LEFT;
-    }
-    else if(new_GREEN_knob_value - *previous_green_knob_value >= 0x00000300 && new_GREEN_knob_value - *previous_green_knob_value < 0x00000f00){
-      *green_knob_direction = RIGHT;
-    }
-    
-    if(*previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && *previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
-       *blue_knob_direction = LEFT;
-    }
-    else if(new_BLUE_knob_value - *previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - *previous_blue_knob_value < 0x0000000f){
-      *blue_knob_direction = RIGHT;
-    }
-
-    
-
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == RED_KNOB_CLICK){
-      *red_knob_direction = UP;
-    }
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == GREEN_KNOB_CLICK){
-      *green_knob_direction = UP;
-    }
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == BLUE_KNOB_CLICK){
-      *blue_knob_direction = UP;
-    }
-    
-
-    *previous_red_knob_value = new_RED_knob_value;
-    *previous_green_knob_value = new_GREEN_knob_value;
-    *previous_blue_knob_value = new_BLUE_knob_value;
-    
-}
-
-void select_menu_item(int item_num, board_values ** board){
-  make_menu(board);
-  for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
-    for(int j = 10; j < scaleX - 10; j++){
-      board[i][j] = SELECTED_MENU_ITEM;
-    }
-  }
-}
-
-
-int print_menu_items(board_values **lcd_board){
-  char * new_game_str = "New game";
-  print_string( 10 * scale,  4 * 1 * scale, new_game_str, TEXT, 1, lcd_board);
-
-  char game_type_str[100] = "Game type: ";
-  if(game->is_multiplayer == 1){
-    strcat(game_type_str, "Multiplayer");
-  }
-  else{
-    
-    strcat(game_type_str, "Singleplayer");
-  }
-  
-  print_string( 10 * scale,  4 * 2 * scale, game_type_str, TEXT, 1, lcd_board);
-
-  // char * new_game_str3 = "Speed";
-  char speed_str[100] = "Speed: ";
-  if(game->speed == 0){
-    strcat(speed_str, "Easy");
-  }
-  else if(game->speed == 1){
-    strcat(speed_str, "Normal");
-  }
-  else if(game->speed == 2){
-    strcat(speed_str, "Hard");
-  }
-  print_string( 10 * scale,  4 * 3 * scale, speed_str, TEXT, 1, lcd_board);
-
-  char borders_str[100] = "Borders: ";
-  if(game->is_border == 0){
-    strcat(borders_str, "No");
-  }
-  else{
-    strcat(borders_str, "Yes");
-  }
-
-  print_string( 10 * scale,  4 * 4 * scale, borders_str, TEXT, 1, lcd_board);
-
-  char * new_game_str5 = "Option 4";
-  print_string( 10 * scale,  4 * 5 * scale, new_game_str5, TEXT, 1, lcd_board);
-
-  char * exit_str = "Exit";
-  print_string( 10 * scale,  4 * 6 * scale, exit_str, TEXT, 1, lcd_board);
-}
-
-
-
-void make_menu(board_values **board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      board[i][j] = MENU;
-    }
-  }
-}
-
-void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_values **lcd_board, board_values **scaled_board){
-
-  uint32_t rgb_knobs_value;
-
-  unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
-  unsigned int previous_green_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & GREEN_KNOB_MASK;
-  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
-  direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
-
-
-  int msec = 0;
-  time_t before = time(NULL);
-  int current_menu = 1;
-
-  while (1) {
-     
-
-    // Initialize structure to 0 seconds and 20 milliseconds
-    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
-
-    // set snakes status indicator
-    // set_snakes_LED(mem_base, snake1,snake2);
-
-
-    // Access register holding 8 bit relative knobs position
-    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
-    // printf("0x%08x\n",rgb_knobs_value);
-    // set knobs directions
-    set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
-
-    
-    if(green_knob_direction == RIGHT){
-        current_menu++;
-    }
-    if(green_knob_direction == LEFT){
-        current_menu--;
-    }
-    if(green_knob_direction ==  UP){
-      switch(current_menu){
-        case 1:
-          printf("START GAME\n");
-          // start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
-          return;
-        case 2:
-          if(game->is_multiplayer == 1){
-            game->is_multiplayer = 0;
-          }
-          else{
-            game->is_multiplayer = 1;
-          }
-          
-          break;
-        case 3:
-          game->speed++;
-          game->speed %= 3;
-          break;
-        case 4:
-          if(game->is_border == 1){
-            game->is_border = 0;
-          }
-          else{
-            game->is_border = 1;
-          }
-          break;
-        case 6:
-          printf("EXIT GAME\n");
-          exit(0);
-          break;
-          
-      }
-          
-    }
-    if(current_menu == 0){
-      current_menu = 6;
-    }
-    if(current_menu == 7){
-      current_menu = 1;
-    }
-    // current_menu %= 6;
-
-    select_menu_item(current_menu, scaled_board);
-    //check input from keyboard and set snake direction
-    // read_from_keyboard(snake1, snake2);
-
-    
-
-  
-    
-    // update lcd_board from scaled_board
-    update_board_view(scaled_board,lcd_board);
-
-    print_menu_items(lcd_board);
-
-    // update microzed screen
-    print_screen(parlcd_mem_base,lcd_board);
-
-    
-
-
-      //small sleep 
-    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
-  }
-}
-
-void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_values **lcd_board, board_values **scaled_board){
-
-  empty_board(scaled_board);
-  print_statusbar(scaled_board);
-
-  snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
-  snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
-
-  generate_snake_on_board(scaled_board, snake1);
-  generate_snake_on_board(scaled_board, snake2);
-
-  apple_t *apple = init_apple();
-
-  reset_apple(scaled_board, apple);
-  generate_apple_on_board(scaled_board, apple);
-
-  
-  if(game->is_multiplayer == 0){
-    snake2->is_alive = 0;
-    remove_snake_from_board(scaled_board, snake2);
-  }
-
-  
-  uint32_t rgb_knobs_value;
-
-  unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
-  unsigned int previous_green_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & GREEN_KNOB_MASK;
-  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
-  direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
-
-
-  int msec = 0;
-  time_t before = time(NULL);
-
-
-  struct timespec loop_delay;
-  loop_delay.tv_sec = 0;
-  if(game->speed == 0){
-    loop_delay.tv_nsec = 100 * 1000 * 1000;
-  }
-  else if(game->speed == 1){
-    loop_delay.tv_nsec = 200 * 1000 * 100;
-  }
-  else if(game->speed == 2){
-    loop_delay.tv_nsec = 200 * 1000 * 10;
-  }
-  
-
-  while (1) {
-     
-
-    
-
-    // set snakes status indicator
-    set_snakes_LED(mem_base, snake1,snake2);
-
-
-    // Access register holding 8 bit relative knobs position
-    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
-    // set knobs directions
-    set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
-
-    //check input from keyboard and set snake direction
-    read_from_keyboard(snake1, snake2);
-
-    snake1->has_eaten = 0;
-    snake2->has_eaten = 0;
-
-    if(snake1->is_alive == 1){
-        change_direction(snake1, red_knob_direction);
-        move_snake(scaled_board, snake1);
-        snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
-        
-     }
-     if(snake2->is_alive == 1){
-       change_direction(snake2,blue_knob_direction);
-       move_snake(scaled_board,snake2);
-       snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
-       
-     }
-
-     if(scaled_board[apple->y][apple->x] != APPLE){
-      reset_apple(scaled_board, apple);
-      generate_apple_on_board(scaled_board, apple);
-     }
-
-    
-    
-
-    print_statusbar(scaled_board);
-
-    // update lcd_board from scaled_board
-    update_board_view(scaled_board,lcd_board);
-
-    // add statusbar
-    print_scores(snake1->count, snake2->count, lcd_board);
-
-    msec = time(NULL) - before;
-    
-
-    // printf("Time taken %d seconds %d milliseconds\n",msec/1000, msec%1000);
-    print_timer(lcd_board,msec);
-
-    // update microzed screen
-    print_screen(parlcd_mem_base,lcd_board);
-
-    
-
-
-      //small sleep 
-    clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
-  }
-}
-
-
-int main(int argc, char *argv[])
-{
-  unsigned char *mem_base;
-  unsigned char *parlcd_mem_base;
-  fb  = (unsigned short *)malloc(320*480*2);
-
-  if (serialize_lock(1) <= 0) {
-    printf("System is occupied\n");
-
-    if (1) {
-      printf("Waitting\n");
-      /* Wait till application holding lock releases it or exits */
-      serialize_lock(0);
-    }
-  }
-
-
-  // Maping mem_base
-  mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
-  if (mem_base == NULL){
-    exit(1);
-  }
-
-  loading_indicator(mem_base);
-
-  //Maping parlcd_mem_base
-  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
-  if( parlcd_mem_base == NULL){
-    exit(1);
-  }
-
-  parlcd_hx8357_init(parlcd_mem_base);
-
-  // set terminal
-  system ("/bin/stty raw");
-  system("stty -g > ~/.stty-save");
-  system("stty -icanon min 0 time 0");
-
-
-
-  board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
-
-  //4, 5, 8, 10,
-  set_scale(10);
-  board_values **scaled_board = init_board(scaleY,scaleX);
-
-  game = init_game();
-  
-  show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
-
-  start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
-  
-
-  serialize_unlock();
-  return 0;
-}
+CC = arm-linux-gnueabihf-gcc
+CXX = arm-linux-gnueabihf-g++
+
+CPPFLAGS = -I .
+CFLAGS =-g -std=gnu99 -O1 -Wall
+CXXFLAGS = -g -std=gnu++11 -O1 -Wall
+LDFLAGS = -lrt -lpthread
+#LDLIBS = -lm
+
+SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c snake.h snake.c text_print.h text_print.c screen_data.h options.h options.c
+SOURCES += font_prop14x16.c font_rom8x16.c
+TARGET_EXE = snake
+#TARGET_IP ?= 192.168.202.127
+ifeq ($(TARGET_IP),)
+ifneq ($(filter debug run,$(MAKECMDGOALS)),)
+$(warning The target IP address is not set)
+$(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
+TARGET_IP ?= 192.168.202.xxx
+endif
+endif
+TARGET_DIR ?= /tmp/$(shell whoami)
+TARGET_USER ?= root
+# for use from Eduroam network use TARGET_IP=localhost and enable next line
+#SSH_OPTIONS=-o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "Port=2222"
+#SSH_GDB_TUNNEL_REQUIRED=y
+#SSH_OPTIONS=-i /opt/zynq/ssh-connect/mzapo-root-key
+#SSH_OPTIONS=-o 'ProxyJump=ctu_login@postel.felk.cvut.cz'
+
+OBJECTS += $(filter %.o,$(SOURCES:%.c=%.o))
+OBJECTS += $(filter %.o,$(SOURCES:%.cpp=%.o))
+
+#$(warning OBJECTS=$(OBJECTS))
+
+ifeq ($(filter %.cpp,$(SOURCES)),)
+LINKER = $(CC)
+LDFLAGS += $(CFLAGS) $(CPPFLAGS)
+else
+LINKER = $(CXX)
+LDFLAGS += $(CXXFLAGS) $(CPPFLAGS)
+endif
+
+%.o:%.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+%.o:%.cpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+all: $(TARGET_EXE)
+
+$(TARGET_EXE): $(OBJECTS)
+	$(LINKER) $(LDFLAGS) -L. $^ -o $@ $(LDLIBS)
+
+.PHONY : dep all run copy-executable debug
+
+dep: depend
+
+depend: $(SOURCES) *.h
+	echo '# autogenerated dependencies' > depend
+ifneq ($(filter %.c,$(SOURCES)),)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -w -E -M $(filter %.c,$(SOURCES)) \
+	  >> depend
+endif
+ifneq ($(filter %.cpp,$(SOURCES)),)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -w -E -M $(filter %.cpp,$(SOURCES)) \
+	  >> depend
+endif
+
+clean:
+	rm -f *.o *.a $(OBJECTS) $(TARGET_EXE) connect.gdb depend
+
+copy-executable: $(TARGET_EXE)
+	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) killall gdbserver 1>/dev/null 2>/dev/null || true
+	ssh $(SSH_OPTIONS) $(TARGET_USER)@$(TARGET_IP) mkdir -p $(TARGET_DIR)
+	scp $(SSH_OPTIONS) $(TARGET_EXE) $(TARGET_USER)@$(TARGET_IP):$(TARGET_DIR)/$(TARGET_EXE)
+
+run: copy-executable $(TARGET_EXE)
+	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) $(TARGET_DIR)/$(TARGET_EXE) > out.out
+
+ifneq ($(filter -o ProxyJump=,$(SSH_OPTIONS))$(SSH_GDB_TUNNEL_REQUIRED),)
+SSH_GDB_PORT_FORWARD=-L 12345:127.0.0.1:12345
+TARGET_GDB_PORT=127.0.0.1:12345
+else
+TARGET_GDB_PORT=$(TARGET_IP):12345
+endif
+
+debug: copy-executable $(TARGET_EXE)
+	xterm -e ssh $(SSH_OPTIONS) $(SSH_GDB_PORT_FORWARD) -t $(TARGET_USER)@$(TARGET_IP) gdbserver :12345 $(TARGET_DIR)/$(TARGET_EXE) &
+	sleep 2
+	echo >connect.gdb "target extended-remote $(TARGET_GDB_PORT)"
+	echo >>connect.gdb "b main"
+	echo >>connect.gdb "c"
+	ddd --debugger gdb-multiarch -x connect.gdb $(TARGET_EXE)
+
+-include depend
