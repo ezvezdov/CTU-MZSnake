@@ -3,7 +3,7 @@
 
 typedef struct game_t{
   int is_multiplayer;
-  int game_speed;
+  int speed;
   int is_border;
 }game_t;
 
