@@ -1,5 +1,6 @@
 #include "snake.h"
 #include "screen_data.h"
+#include "options.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -233,12 +234,37 @@ void move_snake(board_values **board, snake_t *s){
     }
 
     // kill snake if out the board
-    if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX || board[new_head_y][new_head_x] == STATUS_BAR){// || board[new_head_y][new_head_x] != EMPTY_PIXEL &&
-        // board[new_head_y][new_head_x] != APPLE){
-        s->is_alive = 0;
-        remove_snake_from_board(board,s);
-        return;
+    if(game->is_border == 1){
+        if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX || board[new_head_y][new_head_x] == STATUS_BAR){
+            s->is_alive = 0;
+            remove_snake_from_board(board,s);
+            return;
+        }
     }
+    else{
+        
+        if(new_head_x < 0){
+            new_head_x = scaleX-1; //-1
+        }
+        if(new_head_y >= scaleY){
+            new_head_y = 0;
+        }
+        if(new_head_x >= scaleX){
+            new_head_x = 0;
+        }
+        if(new_head_y < 0){
+            new_head_y = scaleY-1;
+        }
+        while(board[new_head_y][new_head_x] == STATUS_BAR){
+            if(s->snake_direction == UP){
+                new_head_y = scaleY-1;
+            }
+            if(s->snake_direction == DOWN){
+                new_head_y++;
+            }
+        }
+    }
+    
     
     // remove tail pixel if snake apple hasn't eaten.
     if(board[new_head_y][new_head_x] != APPLE){
