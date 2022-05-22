@@ -60,7 +60,7 @@ unsigned short *fb;
 
 typedef enum lcd_colors{
   SNAKE_1_COLOR = 0xF800,
-  SNAKE_2_COLOR = 0x0FE0,
+  SNAKE_2_COLOR = 0x001F,
   APPLE_COLOR = 0x0000,
   EMPTY_PIXEL_COLOR = 0x0FE0,
   TEXT_COLOR = 0x0000,
@@ -305,7 +305,7 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
   unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 1000};
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 500};
 
   int msec = 0;
   time_t before = time(NULL);
@@ -327,28 +327,19 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     if(green_knob_direction ==  UP){
       switch(current_menu){
         case 1:
-          printf("START GAME\n");
           return;
         case 2:
-          if(game->is_multiplayer == 1){
-            game->is_multiplayer = 0;
-          }
-          else{
-            game->is_multiplayer = 1;
-          }
-          
+          game->is_multiplayer = game->is_multiplayer == 1 ? 0 : 1;
           break;
         case 3:
           game->speed++;
           game->speed %= 3;
           break;
         case 4:
-          game->is_border++;
-          game->is_border %= 1;
+          game->is_border = game->is_border == 1 ? 0 : 1;
           break;
         case 5:
-          game->is_eating++;
-          game->is_eating %= 1;
+          game->is_eating = game->is_eating == 1 ? 0 : 1;
           break;
         case 6:
           printf("EXIT GAME\n");
