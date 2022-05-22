@@ -24,6 +24,10 @@ make TARGET_IP=192.168.202.xx
 ./snake
 ```
 
+#Project architecture
+[UML Diagram](https://gitlab.fel.cvut.cz/B212_B0B35APO/zviazyau/-/blob/main/snake_diagram.pdf)
+
+
 # Manual
 ## Menu 
 After starting the game, you will see the main menu. There are 2 actions and 3 options. Navigation in menu by green knob, clockwise turn selects next menu item сounterclockwise selects previous menu item. To chose menu item, click the green knob.
