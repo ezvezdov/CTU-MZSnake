@@ -347,8 +347,12 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
           break;
           
       }
-          
     }
+
+    if(blue_knob_direction == UP){
+      game->font_scale = game->font_scale == 1 ? 2 : 1;
+    }
+
     if(current_menu == 0){
       current_menu = 6;
     }
@@ -429,10 +433,6 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
   
 
   while (1) {
-
-
-
-
     
     // set snakes status indicator
     set_snakes_LED(mem_base, snake1,snake2);
@@ -569,11 +569,10 @@ int main(int argc, char *argv[])
     show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
     start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
   }
+
   free_board(lcd_board,SCREEN_Y);
   free_board(scaled_board, scaleY);
   free_game(game);
-  
-  
 
   serialize_unlock();
   return 0;

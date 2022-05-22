@@ -6,6 +6,7 @@ typedef struct game_t{
   int speed;
   int is_border;
   int is_eating;
+  int font_scale;
 }game_t;
 
 game_t *init_game();

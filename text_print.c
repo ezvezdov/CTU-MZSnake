@@ -30,26 +30,26 @@ int string_width(char *str){
 }
 
 
-void print_char(int x, int y, char ch, unsigned colour, int square, board_values **lcd_board) {
+void print_char(int x, int y, char ch, unsigned colour, board_values **lcd_board) {
     uint16_t *ptr = font->bits + (ch - font->firstchar) *font->height;
     ch -= font->firstchar;
     for(int i = 0; i < font->height; i++){
         uint16_t buffer = *(ptr++);   
         for(int j = 0; j < font->maxwidth; j++){
             if ((buffer & 0x8000) != 0){                
-                for(int m = 0; m < square; m++) // for all pixels in square
-                    for(int n = 0 ; n < square; n++)
-                        lcd_board[y + i*square + m][x + j*square + n] = (int)colour;
+                for(int m = 0; m < game->font_scale; m++) // scale font
+                    for(int n = 0 ; n < game->font_scale; n++)
+                        lcd_board[y + i*game->font_scale + m][x + j*game->font_scale + n] = (int)colour;
             }    
             buffer <<= 1;
         }
     }
 }
 
-void print_string(int x, int y, char *str, unsigned colour, int square, board_values **lcd_board){
+void print_string(int x, int y, char *str, unsigned colour, board_values **lcd_board){
   for(int i = 0; i < strlen(str); i++){
-    print_char(x,y,str[i], colour,square, lcd_board);
-    x+= char_width(str[i]) * square;
+    print_char(x,y,str[i], colour, lcd_board);
+    x+= char_width(str[i]) * game->font_scale;
   }
 }
 
@@ -58,13 +58,13 @@ void print_scores(int snake1_score, int snake2_score, board_values **lcd_board){
   char snake1_count[10], snake2_count[10];
   sprintf(snake1_count, "%d", snake1_score);
   strcat(str1,snake1_count);
-  print_string(10,10, str1,SNAKE1,1,lcd_board);
+  print_string(10,10, str1,SNAKE1,lcd_board);
 
   if(game->is_multiplayer == 1){
     char str2[] = "Score:";
     sprintf(snake2_count, "%d", snake2_score);
     strcat(str2,snake2_count);
-    print_string(100,10, str2,SNAKE2,1,lcd_board);
+    print_string(100,10, str2,SNAKE2,lcd_board);
   }
   
 }
@@ -76,12 +76,12 @@ void print_timer(board_values **lcd_board, int msec){
   sprintf(timer_secs, "%02d", (msec)%60);
   strcat(timer_mins,timer_secs);
 
-  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT,1, lcd_board);
+  print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT, lcd_board);
 }
 
 int print_menu_items(board_values **lcd_board){
   char * new_game_str = "New game";
-  print_string( 10 * scale,  4 * 1 * scale, new_game_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 1 * scale, new_game_str, TEXT, lcd_board);
 
   char game_type_str[100] = "Game type: ";
   if(game->is_multiplayer == 1){
@@ -90,7 +90,7 @@ int print_menu_items(board_values **lcd_board){
   else{  
     strcat(game_type_str, "Singleplayer");
   }
-  print_string( 10 * scale,  4 * 2 * scale, game_type_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 2 * scale, game_type_str, TEXT, lcd_board);
 
   char speed_str[100] = "Speed: ";
   if(game->speed == 0){
@@ -102,7 +102,7 @@ int print_menu_items(board_values **lcd_board){
   else if(game->speed == 2){
     strcat(speed_str, "Hard");
   }
-  print_string( 10 * scale,  4 * 3 * scale, speed_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 3 * scale, speed_str, TEXT, lcd_board);
 
   char borders_str[100] = "Borders: ";
   if(game->is_border == 0){
@@ -111,7 +111,7 @@ int print_menu_items(board_values **lcd_board){
   else{
     strcat(borders_str, "Yes");
   }
-  print_string( 10 * scale,  4 * 4 * scale, borders_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 4 * scale, borders_str, TEXT, lcd_board);
 
   char eating_str[100] = "Eating: ";
   if(game->is_eating == 1){
@@ -120,8 +120,8 @@ int print_menu_items(board_values **lcd_board){
   else if(game->is_eating == 0){
     strcat(eating_str, "No");
   }
-  print_string( 10 * scale,  4 * 5 * scale, eating_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 5 * scale, eating_str, TEXT, lcd_board);
 
   char * exit_str = "Exit";
-  print_string( 10 * scale,  4 * 6 * scale, exit_str, TEXT, 1, lcd_board);
+  print_string( 10 * scale,  4 * 6 * scale, exit_str, TEXT, lcd_board);
 }

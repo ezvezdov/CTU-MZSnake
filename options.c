@@ -6,6 +6,7 @@ game_t *init_game(){
   new_game->speed = 1;
   new_game->is_border = 1;
   new_game->is_eating = 1;
+  new_game->font_scale = 1;
   return new_game;
 }
 
