@@ -9,8 +9,6 @@
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
     snake_t *new_snake = malloc(sizeof(snake_t));
-    snake_body_t *head;
-    snake_body_t *tail;
 
     new_snake->is_alive = 1;
     new_snake->has_eaten = 0;
@@ -92,7 +90,7 @@ void add_new_head(snake_t *s, int new_head_y, int new_head_x){
     s->head = new_head;
 }
 
-void change_direction(snake_t *s, direction knobDirection){
+void change_direction_from_knobs(snake_t *s, direction knobDirection){
     if(knobDirection != RIGHT && knobDirection != LEFT){
         return;
     }
@@ -234,7 +232,7 @@ int update_snake_from_board(board_values **board, snake_t *s){
         if(board[i->y][i->x] != s->snake_value && board[i->y][i->x] != EMPTY_PIXEL){
             if(game->is_eating == 0){
                 kill_snake(board,s);
-                return;
+                return 0;
             }
             is_snake_ok = 0;
             break;

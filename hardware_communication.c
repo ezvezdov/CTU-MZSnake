@@ -1,4 +1,5 @@
 #include "hardware_communication.h"
+#include "serialize_lock.h"
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
@@ -8,6 +9,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 char *memdev="/dev/mem";
 /*

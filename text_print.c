@@ -4,7 +4,7 @@
 #include "game.h"
 
 #include <string.h>
-
+#include <stdio.h>
 
 font_descriptor_t *font = &font_winFreeSystem14x16;
 
@@ -85,7 +85,7 @@ void print_timer(board_values **lcd_board, int msec){
   print_string(SCREEN_X - string_width(timer_mins) - 10,10, timer_mins,TEXT, lcd_board);
 }
 
-int print_menu_items(board_values **lcd_board){
+void print_menu_items(board_values **lcd_board){
   char * new_game_str = "New game";
   print_string( 8 * scale,  4 * 1 * scale, new_game_str, TEXT, lcd_board);
 

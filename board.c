@@ -1,5 +1,6 @@
 #include "board.h"
 #include "screen_data.h"
+#include <malloc.h>
 
 board_values **init_board(int max_y, int max_x){
   board_values **board = malloc(max_y * sizeof(board_values*));

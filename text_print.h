@@ -25,6 +25,6 @@ void print_scores(int snake1_score, int snake2_score, board_values **lcd_board);
 void print_timer(board_values **lcd_board, int msec);
 
 /*Print menu items and options*/
-int print_menu_items(board_values **lcd_board);
+void print_menu_items(board_values **lcd_board);
 
 #endif  /*TEXT_PRINT_H*/

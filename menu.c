@@ -5,6 +5,8 @@
 #include "game.h"
 #include "hardware_communication.h"
 #include "screen_data.h"
+#include "screen_printing.h"
+#include "text_print.h"
 
 
 void show_menu(board_values **lcd_board, board_values **scaled_board){

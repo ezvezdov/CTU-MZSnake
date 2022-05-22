@@ -1,6 +1,7 @@
-#include "screen_printing.h"
-#include "screen_data.h"
 #include "hardware_communication.h"
+#include "screen_data.h"
+#include "screen_printing.h"
+#include "text_print.h"
 
 void print_statusbar(board_values ** scaled_board){
   for(int i = 0; 10 + text_height() > i * scale; i++){

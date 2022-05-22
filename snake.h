@@ -48,7 +48,7 @@ void add_new_head(snake_t *s, int new_head_y, int new_head_x);
 
 
 /* Change direction of snake  using knobs*/
-void change_direction(snake_t *s, direction knobDirection);
+void change_direction_from_knobs(snake_t *s, direction knobDirection);
 
 /* Change direction of snake using keyboard */
 void change_direction_from_keyboard(snake_t *s1, snake_t *s2, keyboard_action k_a);

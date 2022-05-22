@@ -1,8 +1,11 @@
 #include "game.h"
 #include "screen_printing.h"
+#include "text_print.h"
 #include "snake.h"
-#include <time.h>
 #include "apple.h"
+
+#include <stdlib.h>
+#include <time.h>
 
 game_t *init_game(){
   game_t *new_game = malloc(sizeof(game_t));
@@ -84,7 +87,7 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     
 
     if(snake1->is_alive == 1){
-        change_direction(snake1, red_knob_direction);
+        change_direction_from_knobs(snake1, red_knob_direction);
         move_snake(scaled_board, snake1);
      }
 
@@ -94,7 +97,7 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     }
 
     if(snake2->is_alive == 1){
-       change_direction(snake2,blue_knob_direction);
+       change_direction_from_knobs(snake2,blue_knob_direction);
        move_snake(scaled_board,snake2);   
     }
 

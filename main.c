@@ -1,7 +1,11 @@
 #define _POSIX_C_SOURCE 200112L
 
-#include <stdlib.h>
+#include "hardware_communication.h"
 #include "game.h"
+#include "menu.h"
+
+#include <stdlib.h>
+#include <unistd.h>
 
 int const SCREEN_X = 480;
 int const SCREEN_Y = 320;
