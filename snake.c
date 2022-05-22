@@ -136,7 +136,7 @@ void change_direction(snake_t *s, direction knobDirection){
     }
 }
 
-void read_from_keyboard(snake_t *snake1, snake_t *snake2){
+int read_from_keyboard(snake_t *snake1, snake_t *snake2){
     char input_symbol;
     if(read(STDIN_FILENO, &input_symbol, 1) == 1){
       switch(input_symbol){
@@ -202,9 +202,12 @@ void read_from_keyboard(snake_t *snake1, snake_t *snake2){
             break;
         case(QUIT_CAP):
         case(QUIT):
-          exit(1);
+        //   exit(1);
+          return 1;
       }
-    }   
+    }
+
+    return 0;
 }
 
 void move_snake(board_values **board, snake_t *s){

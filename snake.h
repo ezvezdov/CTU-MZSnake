@@ -80,7 +80,7 @@ void add_new_head(snake_t *s, int new_head_y, int new_head_x);
 void change_direction(snake_t *s, direction knobDirection);
 
 /* Change direction of snake using keyboard + read other keyboard pushes*/
-void read_from_keyboard(snake_t *snake1, snake_t *snake2);
+int read_from_keyboard(snake_t *snake1, snake_t *snake2);
 
 
 

@@ -281,7 +281,7 @@ void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_re
 void select_menu_item(int item_num, board_values ** board){
   make_menu(board);
   for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
-    for(int j = 10; j < scaleX - 10; j++){
+    for(int j = 7; j < scaleX - 7; j++){
       board[i][j] = SELECTED_MENU_ITEM;
     }
   }
@@ -352,6 +352,24 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     if(blue_knob_direction == UP){
       game->font_scale = game->font_scale == 1 ? 2 : 1;
     }
+    // if(red_knob_direction == UP){
+    //   //4, 5, 8, 10,
+    //   if(scale == 4){
+    //     scale = 5;
+    //     set_scale(5);
+    //   }
+    //   else if(scale == 5){
+    //     set_scale(8);
+    //   }
+    //   else if(scale == 8){
+    //     set_scale(10);
+    //   }
+    //   else if(scale == 10){
+    //     set_scale(4);
+    //   }
+    //   free(scaled_board);
+    //   scaled_board = init_board(scaleY,scaleX);
+    // }
 
     if(current_menu == 0){
       current_menu = 6;
@@ -364,9 +382,6 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     select_menu_item(current_menu, scaled_board);
     //check input from keyboard and set snake direction
     // read_from_keyboard(snake1, snake2);
-
-    
-
   
     
     // update lcd_board from scaled_board
@@ -448,7 +463,9 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
     set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
     //check input from keyboard and set snake direction
-    read_from_keyboard(snake1, snake2);
+    if(read_from_keyboard(snake1, snake2) == 1){
+      break;
+    }
 
     snake1->has_eaten = 0;
     snake2->has_eaten = 0;
@@ -568,6 +585,7 @@ int main(int argc, char *argv[])
   while(1){
     show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
     start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
+    sleep(2);
   }
 
   free_board(lcd_board,SCREEN_Y);
