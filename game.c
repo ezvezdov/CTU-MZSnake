@@ -91,14 +91,17 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
         move_snake(scaled_board, snake1);
      }
 
-    if(snake1->is_alive == 1 && snake2->is_alive == 1 && snake1->head->x == snake2->head->x && snake1->head->y == snake2->head->y){
-      kill_snake(scaled_board, snake1);
-      kill_snake(scaled_board, snake2);
-    }
+    
 
     if(snake2->is_alive == 1){
        change_direction_from_knobs(snake2,blue_knob_direction);
        move_snake(scaled_board,snake2);   
+    }
+
+    if(snake1->is_alive == 1 && snake2->is_alive == 1 && snake1->head->x == snake2->head->x && snake1->head->y == snake2->head->y){
+      printf("CHECK\n");
+      kill_snake(scaled_board, snake1);
+      kill_snake(scaled_board, snake2);
     }
 
     if(snake1->is_alive == 1){
