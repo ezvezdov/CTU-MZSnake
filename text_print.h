@@ -9,6 +9,9 @@ int char_width(int ch);
 /*Check width of string str.*/
 int string_width(char *str);
 
+/* Return height of scaled text */
+int text_height();
+
 /*Print one char on screen.*/
 void print_char(int x, int y, char ch, unsigned colour, board_values **lcd_board);
 

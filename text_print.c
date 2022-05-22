@@ -24,9 +24,15 @@ int char_width(int ch) {
 int string_width(char *str){
   int width = 0;
   for(int i = 0; i < strlen(str); i++){
-    width += char_width(str[i]);
+    width += char_width(str[i]) * game->font_scale;
   }
   return width;
+}
+
+int text_height(){
+  int font_height = 14;
+  
+  return font_height * game->font_scale;
 }
 
 
@@ -64,7 +70,7 @@ void print_scores(int snake1_score, int snake2_score, board_values **lcd_board){
     char str2[] = "Score:";
     sprintf(snake2_count, "%d", snake2_score);
     strcat(str2,snake2_count);
-    print_string(100,10, str2,SNAKE2,lcd_board);
+    print_string(10 + string_width(str1) + string_width("  "),10, str2,SNAKE2,lcd_board);
   }
   
 }

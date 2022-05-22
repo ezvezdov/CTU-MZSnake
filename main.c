@@ -148,7 +148,7 @@ void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short colo
 }
 
 void print_statusbar(board_values ** scaled_board){
-  for(int i = 0; i < 3; i++){
+  for(int i = 0; 10 + text_height() > i * scale; i++){
         for(int j = 0; j < scaleX; j++){
           scaled_board[i][j] = STATUS_BAR;
         }
