@@ -78,6 +78,9 @@ void generate_snake_on_board(board_values **board, snake_t *s){
 }
 
 void remove_tail(snake_t *s){
+    if(s->tail == s->head){
+        return;
+    }
     s->tail = s->tail->next;
     free(s->tail->prev);
     s->tail->prev = NULL;
@@ -252,18 +255,27 @@ void move_snake(board_values **board, snake_t *s){
         remove_tail(s);
         board[s->tail->y][s->tail->x] = s->snake_value;
     }
-
+    
     if(board[new_head_y][new_head_x] == s->snake_value){
-        while(s->tail->y != new_head_y || s->tail->x != new_head_x){
+        if(game->is_eating == 0){
+            kill_snake(board,s);
+            return;
+        }
+        else{
+            while(s->tail->y != new_head_y || s->tail->x != new_head_x){
+                board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
+                remove_tail(s);
+                s->count--;
+            }
             board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
             remove_tail(s);
             s->count--;
+    
+            s->has_eaten = 1;   
         }
-        board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
-        remove_tail(s);
-        s->count--;
-        s->has_eaten = 1;
     }
+
+    
 
 
     if(board[new_head_y][new_head_x] == APPLE){
@@ -280,7 +292,11 @@ int update_snake_from_board(board_values **board, snake_t *s){
     int is_snake_ok = 1;
 
     for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
-        if(board[i->y][i->x] != s->snake_value){
+        if(board[i->y][i->x] != s->snake_value && board[i->y][i->x] != EMPTY_PIXEL){
+            if(game->is_eating == 0){
+                kill_snake(board,s);
+                return;
+            }
             is_snake_ok = 0;
             break;
         }
@@ -289,18 +305,15 @@ int update_snake_from_board(board_values **board, snake_t *s){
     if(is_snake_ok == 1 && s->has_eaten == 1){return 1;}
     if(is_snake_ok == 1){return 0;}
 
-    if(board[s->head->y][s->head->x] != s->snake_value){
-        kill_snake(board,s);
-        return 1;
-    }
-
     while(board[s->tail->y][s->tail->x] == s->snake_value){
         board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
         remove_tail(s);
         s->count--;
     }
+
     remove_tail(s);
     s->count--;
+    
     return 1;
 }
 

@@ -429,6 +429,10 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
   
 
   while (1) {
+
+
+
+
     
     // set snakes status indicator
     set_snakes_LED(mem_base, snake1,snake2);
@@ -449,17 +453,36 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
     snake1->has_eaten = 0;
     snake2->has_eaten = 0;
 
+    
+
     if(snake1->is_alive == 1){
         change_direction(snake1, red_knob_direction);
         move_snake(scaled_board, snake1);
-        snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
-        
      }
-     if(snake2->is_alive == 1){
+
+    if(snake1->is_alive == 1 && snake2->is_alive == 1 && snake1->head->x == snake2->head->x && snake1->head->y == snake2->head->y){
+      kill_snake(scaled_board, snake1);
+      kill_snake(scaled_board, snake2);
+    }
+
+    if(snake2->is_alive == 1){
        change_direction(snake2,blue_knob_direction);
-       move_snake(scaled_board,snake2);
-       snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
-     }
+       move_snake(scaled_board,snake2);   
+    }
+
+
+  
+     
+    
+
+    if(snake1->is_alive == 1){
+      snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
+    }
+    if(snake2->is_alive == 1){
+      snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
+    }
+    
+    
 
 
 
@@ -467,9 +490,6 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
       reset_apple(scaled_board, apple);
       generate_apple_on_board(scaled_board, apple);
      }
-
-    
-    
 
     print_statusbar(scaled_board);
 
@@ -481,17 +501,13 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
 
     msec = time(NULL) - before;
     
-
     // printf("Time taken %d seconds %d milliseconds\n",msec/1000, msec%1000);
     print_timer(lcd_board,msec);
 
     // update microzed screen
     print_screen(parlcd_mem_base,lcd_board);
 
-    
-
-
-      //small sleep 
+    //small sleep 
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
 
