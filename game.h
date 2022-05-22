@@ -1,6 +1,8 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include "board.h"
+
 typedef struct game_t{
   int is_game;
   int is_multiplayer;
@@ -12,6 +14,8 @@ typedef struct game_t{
 
 game_t *init_game();
 void free_game();
+
+void start_game(board_values **lcd_board, board_values **scaled_board);
 
 extern game_t *game;
 

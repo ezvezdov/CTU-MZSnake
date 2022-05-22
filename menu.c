@@ -1,21 +1,10 @@
+#include <time.h>
+
 #include "menu.h"
 #include "user_input.h"
 #include "game.h"
 #include "hardware_communication.h"
 #include "screen_data.h"
-
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <string.h>
-#include <byteswap.h>
-#include <getopt.h>
-#include <inttypes.h>
-#include <time.h>
 
 
 void show_menu(board_values **lcd_board, board_values **scaled_board){

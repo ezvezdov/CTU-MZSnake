@@ -7,7 +7,7 @@ CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 #LDLIBS = -lm
 
-SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c snake.c text_print.c game.c apple.c board.c user_input.c hardware_communication.c menu.c
+SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c snake.c text_print.c game.c apple.c board.c user_input.c hardware_communication.c menu.c screen_printing.c
 SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = snake
 #TARGET_IP ?= 192.168.202.127
