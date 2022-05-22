@@ -85,19 +85,3 @@ void show_menu(board_values **lcd_board, board_values **scaled_board){
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
   }
 }
-
-void update_menu_view(int item_num, board_values ** board){
-  //print background
-  for(int i = 0; i < scaleY; i++){
-      for(int j = 0; j < scaleX; j++){
-      board[i][j] = MENU;
-    }
-  }
-  
-  //print selection
-  for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
-    for(int j = 7; j < scaleX - 7; j++){
-      board[i][j] = SELECTED_MENU_ITEM;
-    }
-  }
-}

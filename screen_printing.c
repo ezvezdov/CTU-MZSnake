@@ -21,6 +21,23 @@ void update_board_view(board_values **scaled_board, board_values **lcd_board){
     }
 }
 
+void update_menu_view(int item_num, board_values ** board){
+  //print background
+  for(int i = 0; i < scaleY; i++){
+      for(int j = 0; j < scaleX; j++){
+      board[i][j] = MENU;
+    }
+  }
+  
+  //print selection
+  for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
+    for(int j = 7; j < scaleX - 7; j++){
+      board[i][j] = SELECTED_MENU_ITEM;
+    }
+  }
+}
+
+
 
 void print_screen(board_values **lcd_board){
   for(int i = 0; i < SCREEN_Y; i++){

@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200112L
 
+#include <stdlib.h>
 #include "game.h"
 
 int const SCREEN_X = 480;
@@ -18,39 +19,38 @@ void set_scale(int new_scale){
 game_t *game;
 
 
+void free_all(board_values **lcd_board,board_values **scaled_board){
+  free_board(lcd_board,SCREEN_Y);
+  free_board(scaled_board, scaleY);
+  free_game(game);
+  free_hardware();
+}
+
+
 int main(int argc, char *argv[])
 {
   hardware_init();
   loading_indicator();
-  
 
   board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
-
   //4, 5, 8, 10,
   set_scale(10);
   board_values **scaled_board = init_board(scaleY,scaleX);
 
-  game = init_game();
+  game = init_game();  
+
   
   while(1){
     show_menu(lcd_board,scaled_board);
-    if(game->is_game == 1){
-     start_game(lcd_board,scaled_board);
-    }
-    else{
+    if(game->is_game == 0){
       break;
     }
+    start_game(lcd_board,scaled_board);
     
     // sleep 1s after game over.
     sleep(1);
   }
   
-
-  free_board(lcd_board,SCREEN_Y);
-  free_board(scaled_board, scaleY);
-  free_game(game);
-
-  free_hardware();
-  
+  free_all(lcd_board,scaled_board);
   return 0;
 }
