@@ -202,7 +202,6 @@ int read_from_keyboard(snake_t *snake1, snake_t *snake2){
             break;
         case(QUIT_CAP):
         case(QUIT):
-        //   exit(1);
           return 1;
       }
     }

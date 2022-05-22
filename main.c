@@ -25,6 +25,7 @@ char *memdev="/dev/mem";
 #include "options.h"
 #include "board.h"
 #include "apple.h"
+#include "user_input.h"
 
 
 unsigned short *fb;
@@ -55,7 +56,7 @@ unsigned short *fb;
 #define SPILED_REG_KBDRD_KNOBS_DIRECT_o 0x020
 
 /* The register representing knobs positions */
-#define SPILED_REG_KNOBS_8BIT_o         0x024
+// #define SPILED_REG_KNOBS_8BIT_o         0x024
 
 
 typedef enum lcd_colors{
@@ -75,14 +76,6 @@ typedef enum led_colors{
   LED_BLUE = 0x0000ff
 } led_colors;
 
-
-#define RED_KNOB_MASK     0x00ff0000
-#define GREEN_KNOB_MASK   0x0000ff00
-#define BLUE_KNOB_MASK    0x000000ff
-#define KNOBS_CLICK_MASK  0x0f000000
-#define RED_KNOB_CLICK    0x04000000
-#define GREEN_KNOB_CLICK  0x02000000
-#define BLUE_KNOB_CLICK   0x01000000
 
 int const SCREEN_X = 480;
 int const SCREEN_Y = 320;
@@ -205,79 +198,6 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
 }
 
 
-// TODO remove it
-void print_scaled_board(board_values **board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      switch(board[i][j]){
-        case EMPTY_PIXEL:
-          printf("E");
-          break;
-        case SNAKE1:
-          printf("S");  
-          break;
-      }
-    }
-    printf("\n");
-  }
-  printf("\n");
-
-}
-
-
-
-
-void set_knobs_direction(unsigned int rgb_knobs_value, unsigned int *previous_red_knob_value, unsigned int *previous_green_knob_value, unsigned int *previous_blue_knob_value,
-                          direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
-        
-    unsigned int new_RED_knob_value = (unsigned int) rgb_knobs_value & RED_KNOB_MASK;
-    unsigned int new_GREEN_knob_value = (unsigned int) rgb_knobs_value & GREEN_KNOB_MASK;
-    unsigned int new_BLUE_knob_value = (unsigned int) rgb_knobs_value & BLUE_KNOB_MASK;
-
-    *red_knob_direction = NULL_DIRECTION;
-    *green_knob_direction = NULL_DIRECTION;
-    *blue_knob_direction = NULL_DIRECTION;
-
-    if(*previous_red_knob_value - new_RED_knob_value >= 0x00030000 && *previous_red_knob_value - new_RED_knob_value < 0x000f0000){
-       *red_knob_direction = LEFT;
-    }
-    else if(new_RED_knob_value - *previous_red_knob_value >= 0x00030000 && new_RED_knob_value - *previous_red_knob_value < 0x000f0000){
-      *red_knob_direction = RIGHT;
-    }
-
-    if(*previous_green_knob_value - new_GREEN_knob_value >= 0x00000300 && *previous_green_knob_value - new_GREEN_knob_value < 0x00000f00){
-       *green_knob_direction = LEFT;
-    }
-    else if(new_GREEN_knob_value - *previous_green_knob_value >= 0x00000300 && new_GREEN_knob_value - *previous_green_knob_value < 0x00000f00){
-      *green_knob_direction = RIGHT;
-    }
-    
-    if(*previous_blue_knob_value - new_BLUE_knob_value >= 0x00000003 && *previous_blue_knob_value - new_BLUE_knob_value < 0x0000000f){
-       *blue_knob_direction = LEFT;
-    }
-    else if(new_BLUE_knob_value - *previous_blue_knob_value >= 0x00000003 && new_BLUE_knob_value - *previous_blue_knob_value < 0x0000000f){
-      *blue_knob_direction = RIGHT;
-    }
-
-    
-
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == RED_KNOB_CLICK){
-      *red_knob_direction = UP;
-    }
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == GREEN_KNOB_CLICK){
-      *green_knob_direction = UP;
-    }
-    if( (rgb_knobs_value & KNOBS_CLICK_MASK) == BLUE_KNOB_CLICK){
-      *blue_knob_direction = UP;
-    }
-    
-
-    *previous_red_knob_value = new_RED_knob_value;
-    *previous_green_knob_value = new_GREEN_knob_value;
-    *previous_blue_knob_value = new_BLUE_knob_value;
-    
-}
-
 void select_menu_item(int item_num, board_values ** board){
   make_menu(board);
   for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
@@ -298,11 +218,6 @@ void make_menu(board_values **board){
 
 void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_values **lcd_board, board_values **scaled_board){
 
-  uint32_t rgb_knobs_value;
-
-  unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
-  unsigned int previous_green_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & GREEN_KNOB_MASK;
-  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
   struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 500};
@@ -312,10 +227,7 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
   int current_menu = 1;
 
   while (1) {
-    // Access register holding 8 bit relative knobs position
-    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
-    set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
+    update_knobs_direction(mem_base, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
     
     if(green_knob_direction == RIGHT){
@@ -352,24 +264,6 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     if(blue_knob_direction == UP){
       game->font_scale = game->font_scale == 1 ? 2 : 1;
     }
-    // if(red_knob_direction == UP){
-    //   //4, 5, 8, 10,
-    //   if(scale == 4){
-    //     scale = 5;
-    //     set_scale(5);
-    //   }
-    //   else if(scale == 5){
-    //     set_scale(8);
-    //   }
-    //   else if(scale == 8){
-    //     set_scale(10);
-    //   }
-    //   else if(scale == 10){
-    //     set_scale(4);
-    //   }
-    //   free(scaled_board);
-    //   scaled_board = init_board(scaleY,scaleX);
-    // }
 
     if(current_menu == 0){
       current_menu = 6;
@@ -391,9 +285,6 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
 
     // update microzed screen
     print_screen(parlcd_mem_base,lcd_board);
-
-    
-
 
       //small sleep 
     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
@@ -421,12 +312,7 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
     kill_snake(scaled_board, snake2);
   }
 
-  
-  uint32_t rgb_knobs_value;
 
-  unsigned int previous_red_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & RED_KNOB_MASK;
-  unsigned int previous_green_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & GREEN_KNOB_MASK;
-  unsigned int previous_blue_knob_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o) & BLUE_KNOB_MASK;
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
 
@@ -456,11 +342,8 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
        break;
     }
 
-    // Access register holding 8 bit relative knobs position
-    rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
-
     // set knobs directions
-    set_knobs_direction(rgb_knobs_value,&previous_red_knob_value, &previous_green_knob_value, &previous_blue_knob_value, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
+    update_knobs_direction(mem_base, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
     //check input from keyboard and set snake direction
     if(read_from_keyboard(snake1, snake2) == 1){
