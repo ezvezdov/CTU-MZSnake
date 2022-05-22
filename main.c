@@ -1,16 +1,5 @@
 #define _POSIX_C_SOURCE 200112L
 
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <string.h>
-#include <byteswap.h>
-#include <getopt.h>
-#include <inttypes.h>
 #include <time.h>
 
 
@@ -29,22 +18,6 @@
 
 
 
-typedef enum lcd_colors{
-  SNAKE_1_COLOR = 0xF800,
-  SNAKE_2_COLOR = 0x001F,
-  APPLE_COLOR = 0x0000,
-  EMPTY_PIXEL_COLOR = 0x0FE0,
-  TEXT_COLOR = 0x0000,
-  STATUS_BAR_COLOR = 0xFFFF,
-  MENU_COLOR = 0xC638,
-  SELECTED_MENU_ITEM_COLOR = 0xFFE6
-} lcd_colors;
-
-typedef enum led_colors{
-  LED_RED = 0xff0000,
-  LED_GREEN = 0x00ff00,
-  LED_BLUE = 0x0000ff
-} led_colors;
 
 
 int const SCREEN_X = 480;
@@ -66,27 +39,7 @@ game_t *game;
 
 
 
-void set_snakes_LED(snake_t *snake1, snake_t *snake2){
-  // if(snake1->is_alive == 1){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_GREEN;
-  // }
-  // if(snake1->has_eaten == 1){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_BLUE;
-  // }
-  // if(snake1->is_alive == 0){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = LED_RED;
-  // }
-  
-  // if(snake2->is_alive == 1){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_GREEN;
-  // }
-  // if(snake2->has_eaten == 1){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_BLUE;
-  // }
-  // if(snake2->is_alive == 0){
-  //   *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_RED;
-  // }
-}
+
 
 
 
@@ -174,8 +127,6 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
 
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
-
-  int msec = 0;
   time_t before = time(NULL);
 
 
@@ -194,18 +145,15 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
   while (1) {
     
     // set snakes status indicator
-    set_snakes_LED(snake1,snake2);
+    set_snakes_indicators(snake1,snake2);
 
     if(snake1->is_alive == 0 && snake2->is_alive == 0){
        break;
     }
 
-    
-
     // set knobs directions
     update_knobs_direction(&red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
-    
 
     //check input from keyboard and set snake direction
     keyboard_action k_a = read_from_keyboard();
@@ -229,17 +177,10 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
       kill_snake(scaled_board, snake2);
     }
 
-  
-
     if(snake2->is_alive == 1){
        change_direction(snake2,blue_knob_direction);
        move_snake(scaled_board,snake2);   
     }
-
-
-  
-     
-    
 
     if(snake1->is_alive == 1){
       snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
@@ -247,18 +188,12 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     if(snake2->is_alive == 1){
       snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
     }
-    
-    
 
-
-
-     if(scaled_board[apple->y][apple->x] != APPLE){
+    if(scaled_board[apple->y][apple->x] != APPLE){
       reset_apple(scaled_board, apple);
       generate_apple_on_board(scaled_board, apple);
      }
 
-
-    
 
     print_statusbar(scaled_board);
 
@@ -269,13 +204,9 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
 
     // add statusbar
     print_scores(snake1->count, snake2->count, lcd_board);
-
-    msec = time(NULL) - before;
     
     // printf("Time taken %d seconds %d milliseconds\n",msec/1000, msec%1000);
-    print_timer(lcd_board,msec);
-
-    
+    print_timer(lcd_board,time(NULL) - before);
 
     // update microzed screen
     print_screen(lcd_board);
@@ -290,31 +221,13 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
   free_apple(apple);
   free_snake(snake1);
   free_snake(snake2);
-
 }
 
 
 int main(int argc, char *argv[])
 {
-  // init_fb();
   hardware_init();
-  
-
-
-
-
-
-
-
-  // loading_indicator(mem_base);
-
-
-
-  // set terminal
-  system ("/bin/stty raw");
-  system("stty -g > ~/.stty-save");
-  system("stty -icanon min 0 time 0");
-
+  loading_indicator();
   
 
   board_values **lcd_board = init_board(SCREEN_Y,SCREEN_X);
@@ -334,8 +247,8 @@ int main(int argc, char *argv[])
       break;
     }
     
-    // sleep 2s after game over.
-    sleep(2);
+    // sleep 1s after game over.
+    sleep(1);
   }
   
 
@@ -343,6 +256,7 @@ int main(int argc, char *argv[])
   free_board(scaled_board, scaleY);
   free_game(game);
 
-  serialize_unlock();
+  free_hardware();
+  
   return 0;
 }

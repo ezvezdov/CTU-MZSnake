@@ -24,8 +24,6 @@ void show_menu(board_values **lcd_board, board_values **scaled_board){
 
   struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
 
-  int msec = 0;
-  time_t before = time(NULL);
   int current_menu = 1;
 
   while (1) {
@@ -44,7 +42,11 @@ void show_menu(board_values **lcd_board, board_values **scaled_board){
     if(k_a == PLAYER1_DOWN || k_a == PLAYER1_DOWN_CAP || k_a == PLAYER2_DOWN || k_a == PLAYER2_DOWN_CAP){
       current_menu++;
     }
-    if(green_knob_direction ==  UP || k_a == SPACE){
+    if(k_a == QUIT || k_a == QUIT_CAP){
+      current_menu = 6;
+    }
+    
+    if(green_knob_direction ==  UP || k_a == SPACE || k_a == QUIT || k_a == QUIT_CAP){
       switch(current_menu){
         case 1:
           return;

@@ -256,10 +256,24 @@ int update_snake_from_board(board_values **board, snake_t *s){
     return 1;
 }
 
-//DEBUG
-void print_snake(snake_t *s, board_values **board){
-    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
-        printf("%d ", board[i->y][i->x]);
-    }
-    printf("\n");
+void set_snakes_indicators(snake_t *snake1, snake_t *snake2){
+  if(snake1->is_alive == 1){
+    set_led1_color(LED_GREEN);
+  }
+  if(snake1->has_eaten == 1){
+    set_led1_color(LED_BLUE);
+  }
+  if(snake1->is_alive == 0){
+    set_led1_color(LED_RED);
+  }
+  
+  if(snake2->is_alive == 1){
+    set_led2_color(LED_GREEN);
+  }
+  if(snake2->has_eaten == 1){
+    set_led2_color(LED_BLUE);
+  }
+  if(snake2->is_alive == 0){
+    set_led2_color(LED_RED);
+  }
 }

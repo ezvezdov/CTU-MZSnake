@@ -1,3 +1,4 @@
+#include "hardware_communication.h"
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
@@ -68,6 +69,16 @@ void hardware_init(){
             serialize_lock(0);
         }
     } 
+
+    // set terminal
+    system ("/bin/stty raw");
+    system("stty -g > ~/.stty-save");
+    system("stty -icanon min 0 time 0");
+}
+
+void free_hardware(){
+    serialize_unlock();
+    free(fb);
 }
 
 
@@ -76,11 +87,14 @@ unsigned int get_rgb_knobs_value(){
     return rgb_knobs_value;
 }
 
-void loading_indicator(unsigned char *mem_base){
+void loading_indicator(){
   //loading animation using LEDs line
   uint32_t val_line=5;
   struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
-  for (int i=0; i<30; i++) {
+  for (int i=0; i<32; i++) {
+    if(i == 31){
+        val_line = 0;
+    }
      *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
      val_line<<=1;
      clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
@@ -100,4 +114,12 @@ void draw_pixel(int x, int y, unsigned short color) {
   if (x >= 0 && x < SCREEN_X && y >= 0 && y < SCREEN_Y) {
     fb[x+480*y] = color;
   }
+}
+
+void set_led1_color(led_color color_to_set){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB1_o) = color_to_set;
+}
+
+void set_led2_color(led_color color_to_set){
+    *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = color_to_set;   
 }

@@ -4,6 +4,7 @@
 #include "board.h"
 #include "user_input.h"
 #include "direction.h"
+#include "hardware_communication.h"
 
 typedef struct snake_body_t
 {
@@ -61,8 +62,7 @@ void move_snake(board_values **board, snake_t *s);
 /* Check if snake eat itself or other snake it its part*/
 int update_snake_from_board(board_values **board, snake_t *s);
 
-//DEBUG
-void print_snake(snake_t *s, board_values **board);
+void set_snakes_indicators(snake_t *snake1, snake_t *snake2);
 
 
 
