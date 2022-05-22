@@ -4,7 +4,7 @@
 
 #include "snake.h"
 #include "screen_data.h"
-#include "options.h"
+#include "game.h"
 
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){

@@ -7,7 +7,7 @@
 
 #include "snake.h"
 #include "text_print.h"
-#include "options.h"
+#include "game.h"
 #include "board.h"
 #include "apple.h"
 #include "user_input.h"

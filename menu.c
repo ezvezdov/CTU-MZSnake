@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "user_input.h"
-#include "options.h"
+#include "game.h"
 #include "hardware_communication.h"
 #include "screen_data.h"
 

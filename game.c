@@ -1,4 +1,4 @@
-#include "options.h"
+#include "game.h"
 
 game_t *init_game(){
   game_t *new_game = malloc(sizeof(game_t));

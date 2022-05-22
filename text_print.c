@@ -1,7 +1,7 @@
 #include "text_print.h"
 #include "screen_data.h"
 #include "font_types.h"
-#include "options.h"
+#include "game.h"
 
 #include <string.h>
 
