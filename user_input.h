@@ -34,4 +34,7 @@ void update_knobs_direction(direction *red_knob_direction, direction *green_knob
 /* Ger keyboard action now */
 keyboard_action read_from_keyboard();
 
+void get_pause();
+
+
 #endif /*USER_INPUT_H*/

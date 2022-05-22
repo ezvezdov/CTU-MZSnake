@@ -104,8 +104,6 @@ void loading_indicator(){
 }
 
 void update_screen(){
-    printf("update_screen\n");
-    // update_screen
     parlcd_write_cmd(parlcd_mem_base, 0x2c);
     for (int ptr = 0; ptr < SCREEN_X*SCREEN_Y ; ptr++) {
         parlcd_write_data(parlcd_mem_base, fb[ptr]);

@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+static struct timespec loop_delay;
+
 game_t *init_game(){
   game_t *new_game = malloc(sizeof(game_t));
   new_game->is_game = 1;
@@ -22,13 +24,27 @@ void free_game(){
     free(game);
 }
 
+void setup_speed(){
+  
+  if(game->speed == 0){
+    loop_delay.tv_nsec = 100 * 1000 * 1000;
+  }
+  else if(game->speed == 1){
+    loop_delay.tv_nsec = 200 * 1000 * 100;
+  }
+  else if(game->speed == 2){
+    loop_delay.tv_nsec = 200 * 1000 * 10;
+  }
+  
+}
+
 void start_game(board_values **lcd_board, board_values **scaled_board){
 
   empty_board(scaled_board);
   print_statusbar(scaled_board);
 
-  snake_t *snake1 = init_snake(20,10,30,10,SNAKE1);
-  snake_t *snake2 = init_snake(20,30,30,30,SNAKE2);
+  snake_t *snake1 = init_snake(20,10,23,10,SNAKE1);
+  snake_t *snake2 = init_snake(20,30,23,30,SNAKE2);
 
   generate_snake_on_board(scaled_board, snake1);
   generate_snake_on_board(scaled_board, snake2);
@@ -49,17 +65,8 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
   time_t before = time(NULL);
 
 
-  struct timespec loop_delay;
-  loop_delay.tv_sec = 0;
-  if(game->speed == 0){
-    loop_delay.tv_nsec = 100 * 1000 * 1000;
-  }
-  else if(game->speed == 1){
-    loop_delay.tv_nsec = 200 * 1000 * 100;
-  }
-  else if(game->speed == 2){
-    loop_delay.tv_nsec = 200 * 1000 * 10;
-  }
+  setup_speed();
+  
   
   while (1) {
     
@@ -67,6 +74,7 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     set_snakes_indicators(snake1,snake2);
 
     if(snake1->is_alive == 0 && snake2->is_alive == 0){
+      remove_apple_from_board(scaled_board,apple);
        break;
     }
 
@@ -77,39 +85,31 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     //check input from keyboard and set snake direction
     keyboard_action k_a = read_from_keyboard();
     if(k_a == QUIT || k_a == QUIT_CAP){
+      remove_apple_from_board(scaled_board,apple);
       break;
     }
+
     change_direction_from_keyboard(snake1,snake2,k_a);
+    change_direction_from_knobs(snake1, red_knob_direction);
+    change_direction_from_knobs(snake2,blue_knob_direction);
 
     snake1->has_eaten = 0;
-    snake2->has_eaten = 0;
-
+    snake2->has_eaten = 0; 
     
 
-    if(snake1->is_alive == 1){
-        change_direction_from_knobs(snake1, red_knob_direction);
-        move_snake(scaled_board, snake1);
-     }
-
     
-
-    if(snake2->is_alive == 1){
-       change_direction_from_knobs(snake2,blue_knob_direction);
-       move_snake(scaled_board,snake2);   
-    }
-
     if(snake1->is_alive == 1 && snake2->is_alive == 1 && snake1->head->x == snake2->head->x && snake1->head->y == snake2->head->y){
-      printf("CHECK\n");
       kill_snake(scaled_board, snake1);
       kill_snake(scaled_board, snake2);
     }
 
-    if(snake1->is_alive == 1){
-      snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
-    }
-    if(snake2->is_alive == 1){
-      snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
-    }
+    
+    move_snake(scaled_board, snake1);
+    snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
+    move_snake(scaled_board,snake2);  
+    snake1->has_eaten = update_snake_from_board(scaled_board, snake1);
+    
+    
 
     if(scaled_board[apple->y][apple->x] != APPLE){
       reset_apple(scaled_board, apple);
@@ -120,7 +120,7 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
     print_statusbar(scaled_board);
 
     // update lcd_board from scaled_board
-    update_board_view(scaled_board,lcd_board);
+    update_lcd_board_from_scaled_board(scaled_board,lcd_board);
 
     
 
@@ -143,4 +143,14 @@ void start_game(board_values **lcd_board, board_values **scaled_board){
   free_apple(apple);
   free_snake(snake1);
   free_snake(snake2);
+
+  game_over(lcd_board);
+}
+
+void game_over(board_values **lcd_board){
+  print_string( 8 * 10,  4 * 3 * 10, "Game over !", TEXT, lcd_board);
+  print_string( 8 * 10,  4 * 3 * 10 + text_height(), "Press any key to continue.", TEXT, lcd_board);
+  
+  print_screen(lcd_board);
+  get_pause();
 }

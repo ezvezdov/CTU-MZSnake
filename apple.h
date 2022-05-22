@@ -21,4 +21,7 @@ void generate_apple_on_board(board_values **board, apple_t *apple);
 /* Randomly generate coordinates of new apple */
 void reset_apple(board_values **board, apple_t *apple);
 
+/* Remove apple representation from boards */
+void remove_apple_from_board(board_values **board, apple_t *apple);
+
 #endif /*APPLE_H*/

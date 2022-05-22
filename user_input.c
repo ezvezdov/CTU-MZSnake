@@ -70,9 +70,20 @@ keyboard_action read_from_keyboard(){
     keyboard_action input_symbol = NOTHING;
     if(read(STDIN_FILENO, &input_symbol, 1) == 1){
         if(input_symbol == PAUSE || input_symbol == PAUSE_CAP){
-            while(read(STDIN_FILENO, &input_symbol, 1) != 1){}
+            get_pause();
         }
     }
 
     return input_symbol;
+}
+
+void get_pause(){
+  keyboard_action input_symbol = NOTHING;
+  direction red_knob_direction, green_knob_direction, blue_knob_direction;
+  while(read(STDIN_FILENO, &input_symbol, 1) != 1){
+    update_knobs_direction(&red_knob_direction, &green_knob_direction, &blue_knob_direction);
+    if(red_knob_direction != NULL_DIRECTION || green_knob_direction != NULL_DIRECTION || blue_knob_direction != NULL_DIRECTION){
+      break;
+    }
+  }
 }

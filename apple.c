@@ -30,3 +30,7 @@ void reset_apple(board_values **board, apple_t *apple){
 void generate_apple_on_board(board_values **board, apple_t *apple){
     board[apple->y][apple->x] = APPLE;
 }
+
+void remove_apple_from_board(board_values **board, apple_t *apple){
+    board[apple->y][apple->x] = EMPTY_PIXEL;
+}

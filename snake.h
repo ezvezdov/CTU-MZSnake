@@ -53,8 +53,7 @@ void change_direction_from_knobs(snake_t *s, direction knobDirection);
 /* Change direction of snake using keyboard */
 void change_direction_from_keyboard(snake_t *s1, snake_t *s2, keyboard_action k_a);
 
-
-
+void check_borders_rule(board_values **board, snake_t *s, int *new_head_x, int *new_head_y);
 
 /* Check where should appear snake's head and check rules compliance*/
 void move_snake(board_values **board, snake_t *s);

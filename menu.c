@@ -76,7 +76,7 @@ void show_menu(board_values **lcd_board, board_values **scaled_board){
     update_menu_view(current_menu, scaled_board);
     
     // update lcd_board from scaled_board
-    update_board_view(scaled_board,lcd_board);
+    update_lcd_board_from_scaled_board(scaled_board,lcd_board);
 
     print_menu_items(lcd_board);
 

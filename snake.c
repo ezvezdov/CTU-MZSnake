@@ -54,8 +54,9 @@ void free_snake(snake_t *s){
 void kill_snake(board_values **board, snake_t *s){
     s->is_alive = 0;
 
-    for(snake_body_t *i = s->tail; i != s->head; i = i->next){
+    for(snake_body_t *i = s->tail; i != NULL; i = i->next){
         board[i->y][i->x] = EMPTY_PIXEL;
+        if(i == s->head){break;}
     }
     board[s->head->y][s->head->x] = EMPTY_PIXEL;
 }
@@ -144,7 +145,35 @@ void change_direction_from_keyboard(snake_t *s1, snake_t *s2, keyboard_action k_
 
 }
 
+void check_borders_rule(board_values **board, snake_t *s, int *new_head_x, int *new_head_y){
+    // kill snake if out the board
+    if(game->is_border == 1){
+        if(*new_head_y < 0 || *new_head_x < 0 || *new_head_y >= scaleY || *new_head_x >= scaleX || board[*new_head_y][*new_head_x] == STATUS_BAR){
+            kill_snake(board,s);
+            return;
+        }
+    }
+    else{
+        *new_head_x = *new_head_x < 0 ? scaleX-1 : *new_head_x; 
+        *new_head_y = *new_head_y >= scaleY ? 0 : *new_head_y;
+        *new_head_x = *new_head_x >= scaleX ? 0 : *new_head_x;
+        *new_head_y = *new_head_y < 0 ? scaleY-1 : *new_head_y;
+
+        while(board[*new_head_y][*new_head_x] == STATUS_BAR){
+            if(s->snake_direction == UP){
+                *new_head_y = scaleY-1;
+            }
+            if(s->snake_direction == DOWN){
+                (*new_head_y)++;
+            }
+        }
+    }
+}
+
 void move_snake(board_values **board, snake_t *s){
+    if(s->is_alive == 0){
+        return;
+    }
 
     // init new head coordinates
     int new_head_x = s->head->x, new_head_y = s->head->y;
@@ -154,43 +183,13 @@ void move_snake(board_values **board, snake_t *s){
     else if(s->snake_direction == LEFT){ new_head_x--; }
     else if(s->snake_direction == RIGHT){ new_head_x++;}
 
-    // kill snake if out the board
-    if(game->is_border == 1){
-        if(new_head_y < 0 || new_head_x < 0 || new_head_y >= scaleY || new_head_x >= scaleX || board[new_head_y][new_head_x] == STATUS_BAR){
-            kill_snake(board,s);
-            return;
-        }
-    }
-    else{
-        
-        if(new_head_x < 0){
-            new_head_x = scaleX-1; //-1
-        }
-        if(new_head_y >= scaleY){
-            new_head_y = 0;
-        }
-        if(new_head_x >= scaleX){
-            new_head_x = 0;
-        }
-        if(new_head_y < 0){
-            new_head_y = scaleY-1;
-        }
-        while(board[new_head_y][new_head_x] == STATUS_BAR){
-            if(s->snake_direction == UP){
-                new_head_y = scaleY-1;
-            }
-            if(s->snake_direction == DOWN){
-                new_head_y++;
-            }
-        }
-    }
-    
+    check_borders_rule(board, s, &new_head_x, &new_head_y);
+    if(s->is_alive == 0){return;}
     
     // remove tail pixel if snake apple hasn't eaten.
     if(board[new_head_y][new_head_x] != APPLE){
         board[s->tail->y][s->tail->x] = EMPTY_PIXEL;
         remove_tail(s);
-        board[s->tail->y][s->tail->x] = s->snake_value;
     }
     
     if(board[new_head_y][new_head_x] == s->snake_value){
@@ -222,10 +221,17 @@ void move_snake(board_values **board, snake_t *s){
     // add new head to snake
     add_new_head(s,new_head_y,new_head_x);
     board[s->head->y][s->head->x] = s->snake_value;
+    if(s->count < 0){
+        s->count = 0;
+        kill_snake(board,s);
+    }
 
 }
 
 int update_snake_from_board(board_values **board, snake_t *s){
+    if(s->is_alive == 0){
+        return 0;
+    }
     int is_snake_ok = 1;
 
     for(snake_body_t *i = s->tail; i != s->head ; i = i->next){

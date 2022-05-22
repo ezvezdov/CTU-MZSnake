@@ -15,6 +15,8 @@ typedef struct game_t{
 game_t *init_game();
 void free_game();
 
+void setup_speed();
+
 void start_game(board_values **lcd_board, board_values **scaled_board);
 
 extern game_t *game;

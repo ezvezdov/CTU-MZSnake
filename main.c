@@ -3,6 +3,7 @@
 #include "hardware_communication.h"
 #include "game.h"
 #include "menu.h"
+#include "text_print.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -43,16 +44,12 @@ int main(int argc, char *argv[])
 
   game = init_game();  
 
-  
   while(1){
     show_menu(lcd_board,scaled_board);
     if(game->is_game == 0){
       break;
     }
     start_game(lcd_board,scaled_board);
-    
-    // sleep 1s after game over.
-    sleep(1);
   }
   
   free_all(lcd_board,scaled_board);
