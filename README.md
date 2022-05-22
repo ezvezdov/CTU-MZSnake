@@ -64,7 +64,8 @@ After starting the game, you will see the main menu. There are 2 actions and 3 o
 * Pushing P key you can pause the game (resume by clicking any key)
 * Type Q to exit the program.
 
-#Project architecture
+# Project architecture
+
 [UML Diagram](https://gitlab.fel.cvut.cz/B212_B0B35APO/zviazyau/-/blob/main/snake_diagram.pdf)
 
 # Equipment
