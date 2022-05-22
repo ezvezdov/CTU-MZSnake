@@ -24,6 +24,7 @@ typedef enum keyboard_action{
     PAUSE_CAP = 'P',
     QUIT = 'q',
     QUIT_CAP = 'Q',
+    SPACE = ' ',
     NOTHING
 } keyboard_action;
 

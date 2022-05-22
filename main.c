@@ -27,36 +27,10 @@ char *memdev="/dev/mem";
 #include "apple.h"
 #include "user_input.h"
 
+#include "hardware_communication.h"
 
-unsigned short *fb;
 
-/*
- * Base address of the region used for mapping of the knobs and LEDs
- * peripherals in the ARM Cortex-A9 physical memory address space.
- */
-#define SPILED_REG_BASE_PHYS 0x43c40000
 
-/* Valid address range for the region */
-#define SPILED_REG_SIZE      0x00004000
-
-/*
- * Byte offset of the register which controls individual LEDs
- * in the row of 32 yellow LEDs. When the corresponding bit
- * is set (value 1) then the LED is lit.
- */
-#define SPILED_REG_LED_LINE_o           0x004
-
-/* The register to control 8 bit RGB components of brightness of the first RGB LED */
-#define SPILED_REG_LED_RGB1_o           0x010
-
-/* The register to control 8 bit RGB components of brightness of the second RGB LED */
-#define SPILED_REG_LED_RGB2_o           0x014
-
-/* Register providing access to unfiltered encoder channels and keyboard return signals. */
-#define SPILED_REG_KBDRD_KNOBS_DIRECT_o 0x020
-
-/* The register representing knobs positions */
-// #define SPILED_REG_KNOBS_8BIT_o         0x024
 
 
 typedef enum lcd_colors{
@@ -94,16 +68,7 @@ game_t *game;
 
 
 
-void loading_indicator(unsigned char *mem_base){
-  //loading animation using LEDs line
-  uint32_t val_line=5;
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 20 * 1000 * 1000};
-  for (int i=0; i<30; i++) {
-     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_LINE_o) = val_line;
-     val_line<<=1;
-     clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
-  }
-}
+
 
 void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
   if(snake1->is_alive == 1){
@@ -126,19 +91,9 @@ void set_snakes_LED(unsigned char *mem_base, snake_t *snake1, snake_t *snake2){
     *(volatile uint32_t*)(mem_base + SPILED_REG_LED_RGB2_o) = LED_RED;
   }
 }
-void update_screen(unsigned char *parlcd_mem_base){
-    // update_screen
-    parlcd_write_cmd(parlcd_mem_base, 0x2c);
-    for (int ptr = 0; ptr < SCREEN_X*SCREEN_Y ; ptr++) {
-        parlcd_write_data(parlcd_mem_base, fb[ptr]);
-    }
-}
 
-void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short color) {
-  if (x >= 0 && x < SCREEN_X && y >= 0 && y < SCREEN_Y) {
-    fb[x+480*y] = color;
-  }
-}
+
+
 
 void print_statusbar(board_values ** scaled_board){
   for(int i = 0; 10 + text_height() > i * scale; i++){
@@ -198,8 +153,15 @@ void print_screen(unsigned char *parlcd_mem_base, board_values **lcd_board){
 }
 
 
-void select_menu_item(int item_num, board_values ** board){
-  make_menu(board);
+void update_menu_view(int item_num, board_values ** board){
+  //print background
+  for(int i = 0; i < scaleY; i++){
+      for(int j = 0; j < scaleX; j++){
+      board[i][j] = MENU;
+    }
+  }
+  
+  //print selection
   for(int i = 4 * item_num; i < 4 * item_num + 4; i++){
     for(int j = 7; j < scaleX - 7; j++){
       board[i][j] = SELECTED_MENU_ITEM;
@@ -208,19 +170,11 @@ void select_menu_item(int item_num, board_values ** board){
 }
 
 
-void make_menu(board_values **board){
-  for(int i = 0; i < scaleY; i++){
-    for(int j = 0; j < scaleX; j++){
-      board[i][j] = MENU;
-    }
-  }
-}
-
 void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_values **lcd_board, board_values **scaled_board){
 
   direction red_knob_direction = NULL_DIRECTION, green_knob_direction = NULL_DIRECTION, blue_knob_direction = NULL_DIRECTION;
 
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 500};
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 200 * 1000 * 100};
 
   int msec = 0;
   time_t before = time(NULL);
@@ -228,7 +182,7 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
 
   while (1) {
     update_knobs_direction(mem_base, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
-
+    keyboard_action k_a = read_from_keyboard();
     
     if(green_knob_direction == RIGHT){
         current_menu++;
@@ -236,7 +190,13 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     if(green_knob_direction == LEFT){
         current_menu--;
     }
-    if(green_knob_direction ==  UP){
+    if(k_a == PLAYER1_UP || k_a == PLAYER1_UP_CAP || k_a == PLAYER2_UP || k_a == PLAYER2_UP_CAP){
+      current_menu--;
+    }
+    if(k_a == PLAYER1_DOWN || k_a == PLAYER1_DOWN_CAP || k_a == PLAYER2_DOWN || k_a == PLAYER2_DOWN_CAP){
+      current_menu++;
+    }
+    if(green_knob_direction ==  UP || k_a == SPACE){
       switch(current_menu){
         case 1:
           return;
@@ -260,6 +220,7 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
           
       }
     }
+    
 
     if(blue_knob_direction == UP){
       game->font_scale = game->font_scale == 1 ? 2 : 1;
@@ -273,9 +234,9 @@ void show_menu(unsigned char *mem_base, unsigned char *parlcd_mem_base,board_val
     }
     // current_menu %= 6;
 
-    select_menu_item(current_menu, scaled_board);
+    update_menu_view(current_menu, scaled_board);
     //check input from keyboard and set snake direction
-    // read_from_keyboard(snake1, snake2);
+    
   
     
     // update lcd_board from scaled_board
@@ -422,9 +383,10 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
 
 int main(int argc, char *argv[])
 {
+  init_fb();
   unsigned char *mem_base;
   unsigned char *parlcd_mem_base;
-  fb  = (unsigned short *)malloc(320*480*2);
+
 
   if (serialize_lock(1) <= 0) {
     printf("System is occupied\n");
