@@ -29,7 +29,7 @@ typedef enum keyboard_action{
 } keyboard_action;
 
 /* Set knobs directions*/
-void update_knobs_direction(unsigned char *mem_base, direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction);
+void update_knobs_direction(direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction);
 
 /* Ger keyboard action now */
 keyboard_action read_from_keyboard();

@@ -1,9 +1,14 @@
+#include "mzapo_parlcd.h"
+#include "mzapo_phys.h"
+#include "mzapo_regs.h"
+
 #include "screen_data.h"
 
 #include <stdint.h>
 #include <time.h>
 #include <stdlib.h>
 
+char *memdev="/dev/mem";
 /*
  * Base address of the region used for mapping of the knobs and LEDs
  * peripherals in the ARM Cortex-A9 physical memory address space.
@@ -29,13 +34,46 @@
 /* Register providing access to unfiltered encoder channels and keyboard return signals. */
 #define SPILED_REG_KBDRD_KNOBS_DIRECT_o 0x020
 
-unsigned short *fb = NULL;
+#define SPILED_REG_KNOBS_8BIT_o         0x024
 
-void init_fb(){
+unsigned short *fb;
+unsigned char *mem_base;
+unsigned char *parlcd_mem_base;
+
+void hardware_init(){
     fb = (unsigned short *) malloc(SCREEN_Y*SCREEN_X*2);
     if(!fb){
         exit(1);
     }
+
+    // Maping mem_base
+    mem_base = map_phys_address(SPILED_REG_BASE_PHYS, SPILED_REG_SIZE, 0);
+    if (mem_base == NULL){
+        exit(1);
+    }
+
+    //Maping parlcd_mem_base
+    parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
+    if( parlcd_mem_base == NULL){
+        exit(1);
+    }
+    parlcd_hx8357_init(parlcd_mem_base);
+
+    if (serialize_lock(1) <= 0) {
+        printf("System is occupied\n");
+
+        if (1) {
+            printf("Waitting\n");
+            /* Wait till application holding lock releases it or exits */
+            serialize_lock(0);
+        }
+    } 
+}
+
+
+unsigned int get_rgb_knobs_value(){
+    unsigned int rgb_knobs_value = *(volatile unsigned int*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    return rgb_knobs_value;
 }
 
 void loading_indicator(unsigned char *mem_base){
@@ -49,7 +87,8 @@ void loading_indicator(unsigned char *mem_base){
   }
 }
 
-void update_screen(unsigned char *parlcd_mem_base){
+void update_screen(){
+    printf("update_screen\n");
     // update_screen
     parlcd_write_cmd(parlcd_mem_base, 0x2c);
     for (int ptr = 0; ptr < SCREEN_X*SCREEN_Y ; ptr++) {
@@ -57,7 +96,7 @@ void update_screen(unsigned char *parlcd_mem_base){
     }
 }
 
-void draw_pixel(unsigned char *parlcd_mem_base,int x, int y, unsigned short color) {
+void draw_pixel(int x, int y, unsigned short color) {
   if (x >= 0 && x < SCREEN_X && y >= 0 && y < SCREEN_Y) {
     fb[x+480*y] = color;
   }

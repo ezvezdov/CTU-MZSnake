@@ -2,6 +2,7 @@
 #define OPTIONS_H
 
 typedef struct game_t{
+  int is_game;
   int is_multiplayer;
   int speed;
   int is_border;

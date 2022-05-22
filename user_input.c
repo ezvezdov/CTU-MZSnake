@@ -1,5 +1,6 @@
 #include "user_input.h"
 #include <unistd.h>
+#include "hardware_communication.h"
 
 #define RED_KNOB_MASK     0x00ff0000
 #define GREEN_KNOB_MASK   0x0000ff00
@@ -8,17 +9,17 @@
 #define RED_KNOB_CLICK    0x04000000
 #define GREEN_KNOB_CLICK  0x02000000
 #define BLUE_KNOB_CLICK   0x01000000
-#define SPILED_REG_KNOBS_8BIT_o         0x024
+
 
 
 unsigned int previous_red_knob_value = 0;
 unsigned int previous_green_knob_value = 0;
 unsigned int previous_blue_knob_value = 0;
 
-void update_knobs_direction(unsigned char *mem_base, direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
+void update_knobs_direction(direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
     
     // Access register holding 8 bit relative knobs position
-    unsigned int rgb_knobs_value = *(volatile unsigned int*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    unsigned int rgb_knobs_value = get_rgb_knobs_value();
         
     unsigned int new_RED_knob_value = (unsigned int) rgb_knobs_value & RED_KNOB_MASK;
     unsigned int new_GREEN_knob_value = (unsigned int) rgb_knobs_value & GREEN_KNOB_MASK;

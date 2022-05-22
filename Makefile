@@ -7,7 +7,7 @@ CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 #LDLIBS = -lm
 
-SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c snake.h snake.c text_print.h text_print.c screen_data.h options.h options.c apple.c apple.h board.c board.h user_input.h user_input.c hardware_communication.h hardware_communication.c
+SOURCES = main.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c snake.c text_print.c options.c apple.c board.c user_input.c hardware_communication.c menu.c
 SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = snake
 #TARGET_IP ?= 192.168.202.127
@@ -74,7 +74,7 @@ copy-executable: $(TARGET_EXE)
 	scp $(SSH_OPTIONS) $(TARGET_EXE) $(TARGET_USER)@$(TARGET_IP):$(TARGET_DIR)/$(TARGET_EXE)
 
 run: copy-executable $(TARGET_EXE)
-	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) $(TARGET_DIR)/$(TARGET_EXE) > out.out
+	ssh $(SSH_OPTIONS) -t $(TARGET_USER)@$(TARGET_IP) $(TARGET_DIR)/$(TARGET_EXE) > log.log
 
 ifneq ($(filter -o ProxyJump=,$(SSH_OPTIONS))$(SSH_GDB_TUNNEL_REQUIRED),)
 SSH_GDB_PORT_FORWARD=-L 12345:127.0.0.1:12345
