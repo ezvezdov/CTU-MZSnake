@@ -1,29 +1,24 @@
 #include "user_input.h"
-#include <sys/mman.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <malloc.h>
-#include <string.h>
-#include <byteswap.h>
-#include <getopt.h>
-#include <inttypes.h>
-#include <time.h>
+
+#define RED_KNOB_MASK     0x00ff0000
+#define GREEN_KNOB_MASK   0x0000ff00
+#define BLUE_KNOB_MASK    0x000000ff
+#define KNOBS_CLICK_MASK  0x0f000000
+#define RED_KNOB_CLICK    0x04000000
+#define GREEN_KNOB_CLICK  0x02000000
+#define BLUE_KNOB_CLICK   0x01000000
+#define SPILED_REG_KNOBS_8BIT_o         0x024
 
 
-// extern unsigned char *mem_base;
 unsigned int previous_red_knob_value = 0;
 unsigned int previous_green_knob_value = 0;
 unsigned int previous_blue_knob_value = 0;
 
-
-
 void update_knobs_direction(unsigned char *mem_base, direction *red_knob_direction, direction *green_knob_direction, direction *blue_knob_direction){
     
     // Access register holding 8 bit relative knobs position
-    unsigned int rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
+    unsigned int rgb_knobs_value = *(volatile unsigned int*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
         
     unsigned int new_RED_knob_value = (unsigned int) rgb_knobs_value & RED_KNOB_MASK;
     unsigned int new_GREEN_knob_value = (unsigned int) rgb_knobs_value & GREEN_KNOB_MASK;
@@ -65,8 +60,18 @@ void update_knobs_direction(unsigned char *mem_base, direction *red_knob_directi
       *blue_knob_direction = UP;
     }
     
-
     previous_red_knob_value = new_RED_knob_value;
     previous_green_knob_value = new_GREEN_knob_value;
     previous_blue_knob_value = new_BLUE_knob_value; 
+}
+
+keyboard_action read_from_keyboard(){
+    keyboard_action input_symbol = NOTHING;
+    if(read(STDIN_FILENO, &input_symbol, 1) == 1){
+        if(input_symbol == PAUSE || input_symbol == PAUSE_CAP){
+            while(read(STDIN_FILENO, &input_symbol, 1) != 1){}
+        }
+    }
+
+    return input_symbol;
 }

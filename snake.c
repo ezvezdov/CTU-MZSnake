@@ -6,6 +6,7 @@
 #include "screen_data.h"
 #include "options.h"
 
+
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
     snake_t *new_snake = malloc(sizeof(snake_t));
     snake_body_t *head;
@@ -15,9 +16,7 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
     new_snake->has_eaten = 0;
     new_snake->snake_value = snake_board_value;
     new_snake->snake_direction = UP;
-
     new_snake->count = 0;
-
 
     snake_body_t *previous_body = NULL;
 
@@ -32,8 +31,6 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
         new_body->y = i;
         new_body->next = NULL;
         new_body->prev = previous_body;
-
-        
         
         if(i == tail_y){
             new_snake->tail = new_body;
@@ -102,111 +99,51 @@ void change_direction(snake_t *s, direction knobDirection){
 
     switch (s->snake_direction)
     {
-    case RIGHT:
-        // RIGHT + RIGHT
-        if(knobDirection == RIGHT){
-            s->snake_direction = DOWN;
-            return;
-        }
-        // RIGHT + LEFT
-        s->snake_direction = UP;
-        return;
-    case LEFT:
-        // LEFT + RIGHT
-        if(knobDirection == RIGHT){
-            s->snake_direction = UP;
-            return;
-        }
-        // LEFT + LEFT
-        s->snake_direction = DOWN;
-        return;
-    case UP:
-        // UP + RIGHT or UP + LEFT
-        s->snake_direction = knobDirection;
-        return;
-    case DOWN:
-        // DOWM + RIGHT
-        if(knobDirection == RIGHT){
-            s->snake_direction = LEFT;
-            return;
-        }
-        // DOWN + LEFT
-        s->snake_direction = RIGHT;
-        return;
+        case RIGHT:
+            // ? RIGHT + RIGHT : RIGHT + LEFT
+            s->snake_direction = knobDirection == RIGHT ? DOWN : UP;
+            break;
+        case LEFT:
+            // ? LEFT + RIGHT : LEFT + LEFT
+            s->snake_direction = knobDirection == RIGHT ? UP : DOWN;
+            break;
+        case UP:
+            // UP + RIGHT or UP + LEFT
+            s->snake_direction = knobDirection;
+            break;
+        case DOWN:
+            // ? DOWM + RIGHT : DOWN + LEFT
+            s->snake_direction = knobDirection == RIGHT ? LEFT : RIGHT;
+            break;
     }
 }
 
-int read_from_keyboard(snake_t *snake1, snake_t *snake2){
-    char input_symbol;
-    if(read(STDIN_FILENO, &input_symbol, 1) == 1){
-      switch(input_symbol){
-        case(PLAYER1_UP_CAP):
-        case(PLAYER1_UP):
-          if(snake1->snake_direction == DOWN){
-            break;
-          }
-          snake1->snake_direction = UP;
-          break;
-        case(PLAYER1_LEFT_CAP):
-        case(PLAYER1_LEFT):
-          if(snake1->snake_direction == RIGHT){
-            break;
-          }
-          snake1->snake_direction = LEFT;
-          break;
-        case(PLAYER1_DOWN_CAP):
-        case(PLAYER1_DOWN):
-          if(snake1->snake_direction == UP){
-            break;
-          }
-          snake1->snake_direction = DOWN;
-          break;
-        case(PLAYER1_RIGHT_CAP):
-        case(PLAYER1_RIGHT):
-          if(snake1->snake_direction == LEFT){
-            break;
-          }
-          snake1->snake_direction = RIGHT;
-          break;
-        case(PLAYER2_UP_CAP):
-        case(PLAYER2_UP):
-          if(snake2->snake_direction == DOWN){
-            break;
-          }
-          snake2->snake_direction = UP;
-          break;
-        case(PLAYER2_LEFT_CAP):
-        case(PLAYER2_LEFT):
-          if(snake2->snake_direction == RIGHT){
-            break;
-          }
-          snake2->snake_direction = LEFT;
-          break;
-        case(PLAYER2_DOWN_CAP):
-        case(PLAYER2_DOWN):
-          if(snake2->snake_direction == UP){
-            break;
-          }
-          snake2->snake_direction = DOWN;
-          break;
-        case(PLAYER2_RIGHT_CAP):
-        case(PLAYER2_RIGHT):
-          if(snake2->snake_direction == LEFT){
-            break;
-          }
-          snake2->snake_direction = RIGHT;
-          break;
-        case(PAUSE_CAP):
-        case(PAUSE):
-            while(read(STDIN_FILENO, &input_symbol, 1) != 1){}
-            break;
-        case(QUIT_CAP):
-        case(QUIT):
-          return 1;
-      }
+void change_direction_from_keyboard(snake_t *s1, snake_t *s2, keyboard_action k_a){
+    if(k_a == PLAYER1_UP|| k_a == PLAYER1_UP_CAP){
+        s1->snake_direction = s1->snake_direction != DOWN ? UP : s1->snake_direction;
+    }
+    else if(k_a == PLAYER1_LEFT || k_a == PLAYER1_LEFT_CAP){
+        s1->snake_direction = s1->snake_direction != RIGHT ? LEFT : s1->snake_direction;
+    }
+    else if(k_a == PLAYER1_DOWN || k_a == PLAYER1_DOWN_CAP){
+        s1->snake_direction = s1->snake_direction != UP ? DOWN : s1->snake_direction;
+    }
+    else if(k_a == PLAYER1_RIGHT || k_a == PLAYER1_RIGHT_CAP){
+        s1->snake_direction = s1->snake_direction != LEFT ? RIGHT : s1->snake_direction;
+    }
+    else if(k_a == PLAYER2_UP || k_a == PLAYER2_UP_CAP){
+        s2->snake_direction = s2->snake_direction != DOWN ? UP : s2->snake_direction;
+    }
+    else if(k_a == PLAYER2_LEFT || k_a == PLAYER2_LEFT_CAP){
+        s2->snake_direction = s2->snake_direction != RIGHT ? LEFT : s2->snake_direction;
+    }
+    else if(k_a == PLAYER2_DOWN || k_a == PLAYER2_DOWN_CAP){
+        s2->snake_direction = s2->snake_direction != UP ? DOWN : s2->snake_direction;
+    }
+    else if(k_a == PLAYER2_RIGHT || k_a == PLAYER2_RIGHT_CAP){
+        s2->snake_direction = s2->snake_direction != LEFT ? RIGHT : s2->snake_direction;
     }
 
-    return 0;
 }
 
 void move_snake(board_values **board, snake_t *s){

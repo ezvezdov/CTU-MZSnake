@@ -346,9 +346,11 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
     update_knobs_direction(mem_base, &red_knob_direction, &green_knob_direction, &blue_knob_direction);
 
     //check input from keyboard and set snake direction
-    if(read_from_keyboard(snake1, snake2) == 1){
+    keyboard_action k_a = read_from_keyboard();
+    if(k_a == QUIT || k_a == QUIT_CAP){
       break;
     }
+    change_direction_from_keyboard(snake1,snake2,k_a);
 
     snake1->has_eaten = 0;
     snake2->has_eaten = 0;
