@@ -433,6 +433,9 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
     // set snakes status indicator
     set_snakes_LED(mem_base, snake1,snake2);
 
+    if(snake1->is_alive == 0 && snake2->is_alive == 0){
+       break;
+    }
 
     // Access register holding 8 bit relative knobs position
     rgb_knobs_value = *(volatile uint32_t*)(mem_base + SPILED_REG_KNOBS_8BIT_o);
@@ -456,8 +459,9 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
        change_direction(snake2,blue_knob_direction);
        move_snake(scaled_board,snake2);
        snake2->has_eaten = update_snake_from_board(scaled_board, snake2);
-       
      }
+
+
 
      if(scaled_board[apple->y][apple->x] != APPLE){
       reset_apple(scaled_board, apple);
@@ -492,9 +496,6 @@ void start_game(unsigned char *mem_base, unsigned char *parlcd_mem_base, board_v
   }
 
   free_apple(apple);
-  free_board(lcd_board,SCREEN_Y);
-  free_board(scaled_board, scaleY);
-  free_game(game);
   free_snake(snake1);
   free_snake(snake2);
 
@@ -548,10 +549,14 @@ int main(int argc, char *argv[])
   board_values **scaled_board = init_board(scaleY,scaleX);
 
   game = init_game();
+  while(1){
+    show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
+    start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
+  }
+  free_board(lcd_board,SCREEN_Y);
+  free_board(scaled_board, scaleY);
+  free_game(game);
   
-  show_menu(mem_base,parlcd_mem_base,lcd_board,scaled_board);
-
-  start_game(mem_base,parlcd_mem_base,lcd_board,scaled_board);
   
 
   serialize_unlock();

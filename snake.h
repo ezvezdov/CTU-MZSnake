@@ -90,6 +90,8 @@ void move_snake(board_values **board, snake_t *s);
 /* Check if snake eat itself or other snake it its part*/
 int update_snake_from_board(board_values **board, snake_t *s);
 
+//DEBUG
+void print_snake(snake_t *s, board_values **board);
 
 
 

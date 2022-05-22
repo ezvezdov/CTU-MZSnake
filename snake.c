@@ -8,15 +8,9 @@
 
 snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values snake_board_value){
     snake_t *new_snake = malloc(sizeof(snake_t));
-    snake_body_t *head = malloc(sizeof(snake_body_t)), *tail = malloc( sizeof(snake_body_t) );
-    head->x = head_x;
-    head->y = head_y;
-    tail->x = tail_x;
-    tail->y = tail_y;
+    snake_body_t *head;
+    snake_body_t *tail;
 
-
-    new_snake->head = head;
-    new_snake->tail = tail;
     new_snake->is_alive = 1;
     new_snake->has_eaten = 0;
     new_snake->snake_value = snake_board_value;
@@ -25,31 +19,40 @@ snake_t *init_snake(int head_y, int head_x, int tail_y, int tail_x, board_values
     new_snake->count = 0;
 
 
-    snake_body_t *previous_body = tail;
+    snake_body_t *previous_body = NULL;
+
     for(int i = tail_y; i >= head_y; i--){
         snake_body_t *new_body = malloc(sizeof(snake_body_t));
 
-        (*previous_body).next = new_body;
-        (*new_body).x = head_x;
-        (*new_body).y = i;
-        (*new_body).next = NULL;
-        previous_body = new_body;
-
-        if(i == head_y){
-            new_body->next = head;
-            head->prev = new_body;
+        if(previous_body != NULL){
+            previous_body->next = new_body;
         }
+        
+        new_body->x = head_x;
+        new_body->y = i;
+        new_body->next = NULL;
+        new_body->prev = previous_body;
+
+        
+        
+        if(i == tail_y){
+            new_snake->tail = new_body;
+        }
+        if(i == head_y){
+            new_snake->head = new_body;
+        }
+
+        previous_body = new_body;
     }
     
     return new_snake;
 }
 
 void free_snake(snake_t *s){
-    for(snake_body_t *i = s->tail; i != s->head; ){
-        snake_body_t *tmp = i;
-        i = i->next;
-        free(tmp);
+    while(s->head != s->tail){
+        remove_tail(s);    
     }
+    free(s->head);
     free(s);
 }
 
@@ -299,4 +302,12 @@ int update_snake_from_board(board_values **board, snake_t *s){
     remove_tail(s);
     s->count--;
     return 1;
+}
+
+//DEBUG
+void print_snake(snake_t *s, board_values **board){
+    for(snake_body_t *i = s->tail; i != s->head ; i = i->next){
+        printf("%d ", board[i->y][i->x]);
+    }
+    printf("\n");
 }

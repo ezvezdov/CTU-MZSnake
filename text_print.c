@@ -48,7 +48,7 @@ void print_char(int x, int y, char ch, unsigned colour, int square, board_values
 
 void print_string(int x, int y, char *str, unsigned colour, int square, board_values **lcd_board){
   for(int i = 0; i < strlen(str); i++){
-    print_char(x,y,str[i], colour,1, lcd_board);
+    print_char(x,y,str[i], colour,square, lcd_board);
     x+= char_width(str[i]) * square;
   }
 }
@@ -60,10 +60,13 @@ void print_scores(int snake1_score, int snake2_score, board_values **lcd_board){
   strcat(str1,snake1_count);
   print_string(10,10, str1,SNAKE1,1,lcd_board);
 
-  char str2[] = "Score:";
-  sprintf(snake2_count, "%d", snake2_score);
-  strcat(str2,snake2_count);
-  print_string(100,10, str2,SNAKE2,1,lcd_board);
+  if(game->is_multiplayer == 1){
+    char str2[] = "Score:";
+    sprintf(snake2_count, "%d", snake2_score);
+    strcat(str2,snake2_count);
+    print_string(100,10, str2,SNAKE2,1,lcd_board);
+  }
+  
 }
 
 void print_timer(board_values **lcd_board, int msec){
