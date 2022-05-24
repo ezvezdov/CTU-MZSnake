@@ -1,33 +1,52 @@
-# Installing and compilation
-You need to install arm-linux-gnueabihf-gcc
-## Ubuntu / Debian
+# Snake game
+This program is a classic snake game on microzed APO board.
+
+This project was made by Yauheni Zviazdou as a semester work of subject Computer Architecture.
+
+# Installing, compilation and executing
+## You need to install arm-linux-gnueabihf-gcc
+### Ubuntu / Debian
 ```bash
 sudo apt-get update
 sudo apt-get install arm-linux-gnueabihf-gcc
 ```
-## Arch-based
+### Arch-based
 [AUR](https://aur.archlinux.org/packages/arm-linux-gnueabihf-gcc)
 
-# How to start?
-## Downloading
+## Installing the game
 ```bash
 cd ~
-mkdir snakeYZ 
-cd snakeYZ
+mkdir snake
+cd snake
 git clone https://gitlab.fel.cvut.cz/B212_B0B35APO/zviazyau.git
+cd zviazyau
+```
+
+# How to start?
+
+## Connecting with microzed APO
+```bash
+ssh-add-mzapo-key
+make TARGET_IP=192.168.202.xx
 ```
 
 ## Executing
 ```bash
-ssh-add-mzapo-key
-make TARGET_IP=192.168.202.xx
 ./snake
 ```
 
 
+
 # Manual
 ## Menu 
-After starting the game, you will see the main menu. There are 2 actions and 3 options. Navigation in menu by green knob, clockwise turn selects next menu item сounterclockwise selects previous menu item. To chose menu item, click the green knob.
+After starting the game, you will see the main menu. There are 2 actions and 3 options.
+Navigation in menu:
+* Move to next menu - green knob clockwise turn | S key | K key
+* Move to previous menu - green knob сounterclockwise | W key | I key.
+* Select current option - push green knob | push Space key
+* Change text scale - push blue knob
+* Exit - Q key
+ 
 ### Actions
 * New game - start new game.
 * Exit - exit programm.
@@ -62,7 +81,7 @@ After starting the game, you will see the main menu. There are 2 actions and 3 o
 
 ### Other
 * Pushing P key you can pause the game (resume by clicking any key)
-* Type Q to exit the program.
+* Type Q to exit to menu without saving game.
 
 # Project architecture
 
