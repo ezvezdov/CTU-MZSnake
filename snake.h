@@ -6,6 +6,7 @@
 #include "direction.h"
 #include "hardware_communication.h"
 
+/* Part of snake (implemented as linked list)*/
 typedef struct snake_body_t
 {
     int y;
@@ -15,6 +16,7 @@ typedef struct snake_body_t
 
 } snake_body_t;
 
+/* Structure what represents snake */
 typedef struct snake_t
 {
     int is_alive;
@@ -61,6 +63,7 @@ void move_snake(board_values **board, snake_t *s);
 /* Check if snake eat itself or other snake it its part*/
 int update_snake_from_board(board_values **board, snake_t *s);
 
+/* Set indicators of snakes status (Set LEDs in this case) */
 void set_snakes_indicators(snake_t *snake1, snake_t *snake2);
 
 

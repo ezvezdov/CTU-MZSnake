@@ -3,6 +3,7 @@
 
 #include "direction.h"
 
+/* enum with actions what we perceive*/
 typedef enum keyboard_action{
     PLAYER1_UP = 'w',
     PLAYER1_UP_CAP = 'W',
@@ -34,6 +35,7 @@ void update_knobs_direction(direction *red_knob_direction, direction *green_knob
 /* Ger keyboard action now */
 keyboard_action read_from_keyboard();
 
+/*Check on user input*/
 void get_pause();
 
 

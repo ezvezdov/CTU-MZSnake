@@ -1,6 +1,7 @@
 #ifndef HARDWARE_COMMUNICATION_H
 #define HARDWARE_COMMUNICATION_H
 
+/* Colors what are used for drawing pixels on lcd*/
 typedef enum lcd_colors{
   SNAKE_1_COLOR = 0xF800,
   SNAKE_2_COLOR = 0x001F,
@@ -12,6 +13,7 @@ typedef enum lcd_colors{
   SELECTED_MENU_ITEM_COLOR = 0xFFE6
 } lcd_color;
 
+/* Colors what are used for changing LEDs color*/
 typedef enum led_colors{
   LED_RED = 0xff0000,
   LED_GREEN = 0x00ff00,
@@ -24,14 +26,22 @@ void hardware_init();
 /* Free all used memmory */
 void free_hardware();
 
+/* Loading indicator implemented, uses LED line*/
 void loading_indicator();
+
+/*Write screen data to microzed APO shared memory*/
 void update_screen();
 
+/* Get value of three knobs status*/
 unsigned int get_rgb_knobs_value();
 
+/* change pixel value in lcd array*/
 void draw_pixel(int x, int y, unsigned short color);
 
+/* Set color_to_set color to LED 1 */
 void set_led1_color(led_color color_to_set);
+
+/* Set color_to_set color to LED 2 */
 void set_led2_color(led_color color_to_set);
 
 #endif
