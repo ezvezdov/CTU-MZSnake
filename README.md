@@ -57,7 +57,11 @@ Navigation in menu:
 * Eating [Yes / No] - snake can eat itself and opponent snake if Yes selected.
 
 ## Game
-### Red snake
+### Singleplayer gameplay
+  Main aim is eat as musch as possible apples (what have black color and respawn at board, when snake eat it). In classic mode snake can eat itself, die when crashes into border.
+### Multiplayer gameplay
+  Aim in this mode is kill another snake and have bigger scode. Snake die, when it has length of 2 (2 links, jsut head and tail). Snakes both will die if their heads will crashes. Recomended options: turned on eating and turned off borders.
+### Red snake controls
 * Knobs contol
   * Red knob clockwise - turn snake's head to Right (in snake's view)
   * Red knob сounterclockwise - turn snake's head to
@@ -68,7 +72,7 @@ Navigation in menu:
   * S key - turn snake's head to Down
   * D key - turn snake's head to Right
 
-### Blue snake (multilplayer)
+### Blue snake controls (multilplayer)
 * Knobs contol
   * Blue knob clockwise - turn snake's head to Right (in snake's view)
   * Blue knob сounterclockwise - turn snake's head to
