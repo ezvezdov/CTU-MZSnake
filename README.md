@@ -18,8 +18,8 @@ sudo apt-get install arm-linux-gnueabihf-gcc
 cd ~
 mkdir snake
 cd snake
-git clone https://gitlab.fel.cvut.cz/B212_B0B35APO/zviazyau.git
-cd zviazyau
+git clone https://github.com/ezvezdov/CTU-MZSnake.git
+cd CTU-MZSnake
 ```
 
 # How to start?
