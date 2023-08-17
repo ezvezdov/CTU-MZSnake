@@ -7,7 +7,7 @@ This project was made by Yauheni Zviazdou as a semester work of subject Computer
 
 # Installing, compilation and executing
 ## You need to install arm-linux-gnueabihf-gcc
-### Ubuntu / Debian 🐧
+### Ubuntu / Debian
 ```bash
 sudo apt-get update
 sudo apt-get install arm-linux-gnueabihf-gcc
