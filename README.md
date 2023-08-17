@@ -1,11 +1,13 @@
-# Snake game
+# Snake game 🐍
 This program is a classic snake game on microzed APO board.
 
 This project was made by Yauheni Zviazdou as a semester work of subject Computer Architecture.
 
+[📺 Game video preview 📺](https://youtu.be/0y7wJU27KDQ)
+
 # Installing, compilation and executing
 ## You need to install arm-linux-gnueabihf-gcc
-### Ubuntu / Debian
+### Ubuntu / Debian 🐧
 ```bash
 sudo apt-get update
 sudo apt-get install arm-linux-gnueabihf-gcc
